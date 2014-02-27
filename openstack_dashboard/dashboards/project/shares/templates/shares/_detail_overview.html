@@ -1,0 +1,61 @@
+{% load i18n sizeformat parse_date %}
+{% load url from future %}
+
+<h3>{% trans "Share Overview" %}</h3>
+
+<div class="info row-fluid detail">
+  <h4>{% trans "Info" %}</h4>
+  <hr class="header_rule">
+  <dl>
+    <dt>{% trans "Name" %}</dt>
+    <dd>{{ share.name }}</dd>
+    <dt>{% trans "ID" %}</dt>
+    <dd>{{ share.id }}</dd>
+    {% if share.description %}
+    <dt>{% trans "Description" %}</dt>
+    <dd>{{ share.description }}</dd>
+    {% endif %}
+    <dt>{% trans "Status" %}</dt>
+    <dd>{{ share.status|capfirst }}</dd>
+  </dl>
+</div>
+
+<div class="specs row-fluid detail">
+  <h4>{% trans "Specs" %}</h4>
+  <hr class="header_rule">
+  <dl>
+    <dt>{% trans "Size" %}</dt>
+    <dd>{{ share.size }} {% trans "GB" %}</dd>
+    <dt>{% trans "Created" %}</dt>
+    <dd>{{ share.created_at|parse_date }}</dd>
+  </dl>
+</div>
+{##}
+{#<div class="status row-fluid detail">#}
+{#  <h4>{% trans "Attachments" %}</h4>#}
+{#  <hr class="header_rule">#}
+{#  <dl>#}
+{#  {% for attachment in share.attachments %}#}
+{#      <dt>{% trans "Attached To" %}</dt>#}
+{#      <dd>#}
+{#        {% url 'horizon:project:instances:detail' attachment.server_id as instance_url%}#}
+{#        <a href="{{ instance_url }}">{{ attachment.instance.name }}</a>#}
+{#        <span> {% trans "on" %} {{ attachment.device }}</span>#}
+{#      </dd>#}
+{#  {% empty %}#}
+{#      <dt>{% trans "Attached To" %}</dt>#}
+{#      <dd><em>{% trans "Not attached" %}</em></dd>#}
+{#  {% endfor %}#}
+{#  </dl>#}
+{#</div>#}
+
+<div class="status row-fluid detail">
+  <h4>{% trans "Metadata" %}</h4>
+  <hr class="header_rule">
+  <dl>
+  {% for key, value in share.metadata.items %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+  {% endfor %}
+  </dl>
+</div>

@@ -25,6 +25,7 @@ class BasePanels(horizon.PanelGroup):
     panels = ('overview',
               'instances',
               'volumes',
+              'shares',
               'images_and_snapshots',
               'access_and_security',)
 
