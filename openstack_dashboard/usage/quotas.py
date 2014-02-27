@@ -21,6 +21,7 @@ from horizon.utils.memoized import memoized  # noqa
 
 from openstack_dashboard.api import base
 from openstack_dashboard.api import cinder
+from openstack_dashboard.api import manila
 from openstack_dashboard.api import network
 from openstack_dashboard.api import neutron
 from openstack_dashboard.api import nova
@@ -120,6 +121,8 @@ def _get_quota_data(request, method_name, disabled_quotas=None,
         disabled_quotas = get_disabled_quotas(request)
     if 'volumes' not in disabled_quotas:
         quotasets.append(getattr(cinder, method_name)(request, tenant_id))
+    if 'shares' not in disabled_quotas:
+        quotasets.append(getattr(manila, method_name)(request, tenant_id))
     for quota in itertools.chain(*quotasets):
         if quota.name not in disabled_quotas:
             qs[quota.name] = quota.limit
@@ -223,6 +226,9 @@ def tenant_quota_usages(request):
         usages.tally('gigabytes', sum([int(v.size) for v in volumes]))
         usages.tally('volumes', len(volumes))
         usages.tally('snapshots', len(snapshots))
+
+    shares = manila.share_list(request)
+    usages.tally('shares', len(shares))
 
     # Sum our usage based on the flavors of the instances.
     for flavor in [flavors[instance.flavor['id']] for instance in instances]:

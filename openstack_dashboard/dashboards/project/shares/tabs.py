@@ -16,29 +16,19 @@
 
 from django.utils.translation import ugettext_lazy as _
 
-import horizon
+from horizon import tabs
 
 
-class SystemPanels(horizon.PanelGroup):
-    slug = "admin"
-    name = _("System Panel")
-    panels = ('overview', 'metering', 'hypervisors', 'aggregates',
-              'instances', 'volumes', 'flavors', 'images',
-              'networks', 'routers', 'defaults', 'info', 'shares')
+class OverviewTab(tabs.Tab):
+    name = _("Overview")
+    slug = "overview"
+    template_name = ("project/shares/"
+                     "_detail_overview.html")
+
+    def get_context_data(self, request):
+        return {"share": self.tab_group.kwargs['share']}
 
 
-class IdentityPanels(horizon.PanelGroup):
-    slug = "identity"
-    name = _("Identity Panel")
-    panels = ('domains', 'projects', 'users', 'groups', 'roles')
-
-
-class Admin(horizon.Dashboard):
-    name = _("Admin")
-    slug = "admin"
-    panels = (SystemPanels, IdentityPanels)
-    default_panel = 'overview'
-    permissions = ('openstack.roles.admin',)
-
-
-horizon.register(Admin)
+class ShareDetailTabs(tabs.TabGroup):
+    slug = "share_details"
+    tabs = (OverviewTab,)
