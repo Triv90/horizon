@@ -24,7 +24,9 @@ from horizon import exceptions
 from horizon import forms
 from horizon import messages
 
+from openstack_dashboard.api import keystone
 from openstack_dashboard.api import manila
+from openstack_dashboard.api import neutron
 
 
 class CreateSecurityService(forms.SelfHandlingForm):
@@ -56,13 +58,41 @@ class CreateSecurityService(forms.SelfHandlingForm):
             return False
 
 
-class CreateShareNetwork(forms.SelfHandlingForm):
+class CreateShareNetworkForm(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Name"))
     neutron_net_id = forms.ChoiceField(choices=(), label=_("Neutron Net ID"))
-    neutron_subnet_id = forms.ChoiceField(choices=(), label=_("Neutron Subnet ID"))
+    neutron_subnet_id = forms.ChoiceField(choices=(),
+                                          label=_("Neutron Subnet ID"))
+    #security_service = forms.MultipleChoiceField(
+    #    widget=forms.SelectMultiple,
+    #    label=_("Security Service"))
+    project = forms.ChoiceField(choices=(), label=_("Project"))
     description = forms.CharField(widget=forms.Textarea,
                                   label=_("Description"), required=False)
 
+    def __init__(self, request, *args, **kwargs):
+        super(CreateShareNetworkForm, self).__init__(
+            request, *args, **kwargs)
+        net_choices = neutron.network_list(request)
+        subnet_choices = neutron.subnet_list(request)
+        sec_services_choices = manila.security_service_list(
+            request, search_opts={'all_tenants': True})
+        self.fields['neutron_net_id'].choices = [(' ', ' ')] + \
+                                                [(choice.id, choice.name_or_id)
+                                                 for choice in net_choices]
+        self.fields['neutron_subnet_id'].choices = [(' ', ' ')] + \
+                                                   [(choice.id,
+                                                     choice.name_or_id) for
+                                                    choice in subnet_choices]
+        #self.fields['security_service'].choices = [(choice.id,
+        #                                             choice.name) for
+        #                                            choice in
+        #                                            sec_services_choices]
+        tenants, has_more = keystone.tenant_list(request)
+        self.fields['project'].choices = [(' ', ' ')] + \
+                                                   [(choice.id,
+                                                     choice.name) for
+                                                    choice in tenants]
 
     def handle(self, request, data):
         try:
@@ -75,3 +105,7 @@ class CreateShareNetwork(forms.SelfHandlingForm):
             exceptions.handle(request,
                               _('Unable to create share network.'))
             return False
+
+
+class UpdateShareNetworkForm(forms.SelfHandlingForm):
+    pass

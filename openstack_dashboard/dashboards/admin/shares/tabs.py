@@ -1,4 +1,11 @@
-# Copyright (c) 2014 NetApp, Inc.
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
+# Copyright 2012 United States Government as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All Rights Reserved.
+#
+# Copyright 2012 Nebula, Inc.
+# Copyright 2012 OpenStack Foundation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -15,19 +22,16 @@
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
-from horizon import messages
 from horizon import tabs
 
 from openstack_dashboard.api import keystone
 from openstack_dashboard.api import manila
-from openstack_dashboard.api import network
-from openstack_dashboard.api import nova
 
-from openstack_dashboard.dashboards.project.\
+from openstack_dashboard.dashboards.admin.\
     shares.tables import SharesTable
-from openstack_dashboard.dashboards.project.\
+from openstack_dashboard.dashboards.admin.\
     shares.tables import SecurityServiceTable
-from openstack_dashboard.dashboards.project.\
+from openstack_dashboard.dashboards.admin.\
     shares.tables import ShareNetworkTable
 
 
@@ -61,13 +65,15 @@ class SharesTab(tabs.TableTab):
 
     def get_shares_data(self):
         try:
-            shares = manila.share_list(self.request)
+            shares = manila.share_list(self.request,
+                                       search_opts={'all_tenants': True})
         except Exception:
             exceptions.handle(self.request,
                               _('Unable to retrieve share list.'))
             return []
         #Gather our tenants to correlate against IDs
         set_tenant_name_to_objects(self.request, shares)
+        self._set_id_if_nameless(shares)
         return shares
 
 
@@ -79,7 +85,8 @@ class SecurityServiceTab(tabs.TableTab):
 
     def get_security_services_data(self):
         try:
-            security_services = manila.security_service_list(self.request)
+            security_services = manila.security_service_list(
+                self.request, search_opts={'all_tenants': True})
         except Exception:
             security_services = []
             exceptions.handle(self.request,
@@ -97,8 +104,8 @@ class ShareNetworkTab(tabs.TableTab):
 
     def get_share_networks_data(self):
         try:
-            share_networks = manila.share_network_list(self.request,
-                                                       detailed=True)
+            share_networks = manila.share_network_list(
+                self.request, detailed=True, search_opts={'all_tenants': True})
         except Exception:
             share_networks = []
             exceptions.handle(self.request,
@@ -112,17 +119,3 @@ class ShareTabs(tabs.TabGroup):
     tabs = (SecurityServiceTab, ShareNetworkTab, SharesTab)
     sticky = True
 
-
-class OverviewTab(tabs.Tab):
-    name = _("Overview")
-    slug = "overview"
-    template_name = ("project/shares/"
-                     "_detail_overview.html")
-
-    def get_context_data(self, request):
-        return {"share": self.tab_group.kwargs['share']}
-
-
-class ShareDetailTabs(tabs.TabGroup):
-    slug = "share_details"
-    tabs = (OverviewTab,)

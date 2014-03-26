@@ -110,8 +110,9 @@ def share_snapshot_delete(request, snapshot_id):
     return manilaclient(request).share_snapshots.delete(snapshot_id)
 
 
-def share_network_list(request, search_opts=None):
-    return manilaclient(request).share_networks.list(search_opts=search_opts)
+def share_network_list(request, detailed=False, search_opts=None):
+    return manilaclient(request).share_networks.list(detailed=detailed,
+                                                     search_opts=search_opts)
 
 
 def share_network_create(request, neutron_net_id=None, neutron_subnet_id=None,
@@ -119,6 +120,19 @@ def share_network_create(request, neutron_net_id=None, neutron_subnet_id=None,
     return manilaclient(request).share_networks.create(
         neutron_net_id=neutron_net_id, neutron_subnet_id=neutron_subnet_id,
         name=name, description=description)
+
+
+def share_network_update(request, share_net_id, name=None, description=None):
+    return manilaclient(request).share_networks.update(share_net_id,
+        name=name, description=description)
+
+
+def share_network_activate(request, share_net_id):
+    return manilaclient(request).share_networks.activate(share_net_id)
+
+
+def share_network_deactivate(request, share_net_id):
+    return manilaclient(request).share_networks.deactivate(share_net_id)
 
 
 def share_network_delete(request, share_network_id):
@@ -135,6 +149,15 @@ def security_service_create(request, type, dns_ip=None, server=None,
                             description=None):
     return manilaclient(request).security_services.create(
         type, dns_ip=dns_ip, server=server, domain=domain, sid=sid,
+        password=password, name=name, description=description)
+
+
+def security_service_update(request, security_service_id, dns_ip=None,
+                            server=None,
+                            domain=None, sid=None, password=None, name=None,
+                            description=None):
+    return manilaclient(request).security_services.update(security_service_id,
+        dns_ip=dns_ip, server=server, domain=domain, sid=sid,
         password=password, name=name, description=description)
 
 

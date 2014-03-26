@@ -7,15 +7,9 @@
 {% endblock page_header %}
 
 {% block main %}
-  <div id="shares">
-      {{ shares_table.render }}
+<div class="row-fluid">
+  <div class="span12">
+  {{ tab_group.render }}
   </div>
-
-  <div id="security-services">
-      {{ security_services_table.render }}
-  </div>
-
-  <div id="share-networks">
-      {{ share_networks_table.render }}
-  </div>
+</div>
 {% endblock %}
