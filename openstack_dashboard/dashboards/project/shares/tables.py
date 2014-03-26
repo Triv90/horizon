@@ -32,7 +32,7 @@ from openstack_dashboard import policy
 from openstack_dashboard.usage import quotas
 
 
-DELETABLE_STATES = ("available", "error", "error_extending")
+DELETABLE_STATES = ("available", "error")
 
 
 class DeleteShare(tables.DeleteAction):
@@ -119,40 +119,6 @@ class EditShare(tables.LinkAction):
         return share.status in ("available", "in-use")
 
 
-class CreateSecurityService(tables.LinkAction):
-    name = "create"
-    verbose_name = _("Create Security Service")
-    url = "horizon:project:shares:create_security_service"
-    classes = ("ajax-modal", "btn-create")
-    #policy_rules = (("share", "volume_extension:types_manage"),)
-
-
-class DeleteSecurityService(tables.DeleteAction):
-    data_type_singular = _("Security Service")
-    data_type_plural = _("Security Services")
-    #policy_rules = (("volume", "volume_extension:types_manage"),)
-
-    def delete(self, request, obj_id):
-        manila.security_service_delete(request, obj_id)
-
-
-class CreateShareNetwork(tables.LinkAction):
-    name = "create"
-    verbose_name = _("Create Share Network")
-    url = "horizon:project:shares:create_share_network"
-    classes = ("ajax-modal", "btn-create")
-    #policy_rules = (("share", "volume_extension:types_manage"),)
-
-
-class DeleteShareNetwork(tables.DeleteAction):
-    data_type_singular = _("Share Network")
-    data_type_plural = _("Share Networks")
-    #policy_rules = (("volume", "volume_extension:types_manage"),)
-
-    def delete(self, request, obj_id):
-        manila.security_service_delete(request, obj_id)
-
-
 class UpdateRow(tables.Row):
     ajax = True
 
@@ -220,16 +186,120 @@ class SharesTable(SharesTableBase):
         name = "shares"
         verbose_name = _("Shares")
         status_columns = ["status"]
-        permissions = ('openstack.roles.reselleradmin', )
         row_class = UpdateRow
         table_actions = (CreateShare, DeleteShare, SharesFilterAction)
         row_actions = (EditShare, CreateSnapshot, DeleteShare)
 
 
-class ShareNetworkTable(tables.DataTable):
+class CreateSecurityService(tables.LinkAction):
+    name = "create_security_service"
+    verbose_name = _("Create Security Service")
+    url = "horizon:project:shares:create_security_service"
+    classes = ("ajax-modal", "btn-create")
+    policy_rules = (("share", "volume_extension:types_manage"),)
+
+
+class DeleteSecurityService(tables.DeleteAction):
+    data_type_singular = _("Security Service")
+    data_type_plural = _("Security Services")
+    #policy_rules = (("volume", "volume_extension:types_manage"),)
+
+    def delete(self, request, obj_id):
+        manila.security_service_delete(request, obj_id)
+
+
+class CreateShareNetwork(tables.LinkAction):
+    name = "create_share_network"
+    verbose_name = _("Create Share Network")
+    url = "horizon:project:shares:create_share_network"
+    classes = ("ajax-modal", "btn-create")
+    #policy_rules = (("share", "volume_extension:types_manage"),)
+
+
+class DeleteShareNetwork(tables.DeleteAction):
+    data_type_singular = _("Share Network")
+    data_type_plural = _("Share Networks")
+    #policy_rules = (("volume", "volume_extension:types_manage"),)
+
+    def delete(self, request, obj_id):
+        manila.share_network_delete(request, obj_id)
+
+
+class ActivateShareNetwork(tables.BatchAction):
+    name = "activate"
+    action_present = _("Activate")
+    action_past = _("Activating")
+    data_type_singular = _("Share Network")
+    data_type_plural = _("Share Networks")
+    verbose_name = _("Activate Share Network")
+    #policy_rules = (("share", "volume_extension:types_manage"),)
+
+    def action(self, request, obj_id):
+        manila.share_network_activate(request, obj_id)
+
+    def get_success_url(self, request):
+        return reverse('horizon:project:shares:index')
+
+    def allowed(self, request, share=None):
+        return share.status == "INACTIVE"
+
+
+class DeactivateShareNetwork(tables.BatchAction):
+    name = "deactivate"
+    action_present = _("Deactivate")
+    action_past = _("Deactivating")
+    data_type_singular = _("Share Network")
+    data_type_plural = _("Share Networks")
+    verbose_name = _("Activate Share Network")
+    #policy_rules = (("share", "volume_extension:types_manage"),)
+
+    def action(self, request, obj_id):
+        manila.share_network_deactivate(request, obj_id)
+
+    def get_success_url(self, request):
+        return reverse('horizon:project:shares:index')
+
+    def allowed(self, request, share=None):
+        return share.status == "ACTIVE"
+
+
+class EditShareNetwork(tables.LinkAction):
+    name = "edit"
+    verbose_name = _("Edit Share Network")
+    url = "horizon:project:shares:share_network:update"
+    classes = ("ajax-modal", "btn-create")
+
+
+class EditSecurityService(tables.LinkAction):
+    name = "edit"
+    verbose_name = _("Edit Security Service")
+    url = "horizon:project:shares:security_service:update"
+    classes = ("ajax-modal", "btn-create")
+
+
+class SecurityServiceTable(tables.DataTable):
     name = tables.Column("name",
                          verbose_name=_("Name"))
-    tenant = tables.Column("tenant_name", verbose_name=_("Project"))
+    dns_ip = tables.Column("dns_ip", verbose_name=_("DNS IP"))
+    server = tables.Column("server", verbose_name=_("Server"))
+    domain = tables.Column("domain", verbose_name=_("Domain"))
+    sid = tables.Column("sid", verbose_name=_("Sid"))
+
+    def get_object_display(self, security_service):
+        return security_service.name
+
+    def get_object_id(self, security_service):
+        return str(security_service.id)
+
+    class Meta:
+        name = "security_services"
+        verbose_name = _("Security Services")
+        table_actions = (CreateSecurityService, DeleteSecurityService)
+        row_actions = (EditSecurityService, DeleteSecurityService,)
+
+
+class ShareNetworkTable(tables.DataTable):
+    name = tables.Column("name", verbose_name=_("Name"))
     ip_version = tables.Column("ip_version", verbose_name=_("IP Version"))
     network_type = tables.Column("network_type",
                                  verbose_name=_("Network Type"))
@@ -250,29 +320,6 @@ class ShareNetworkTable(tables.DataTable):
     class Meta:
         name = "share_networks"
         verbose_name = _("Share Networks")
-        permissions = ('openstack.roles.reselleradmin',)
         table_actions = (CreateShareNetwork, DeleteShareNetwork)
-        row_actions = (DeleteShareNetwork,)
-
-
-class SecurityServiceTable(tables.DataTable):
-    name = tables.Column("name",
-                         verbose_name=_("Name"))
-    tenant = tables.Column("tenant_name", verbose_name=_("Project"))
-    dns_ip = tables.Column("dns_ip", verbose_name=_("DNS IP"))
-    server = tables.Column("server", verbose_name=_("Server"))
-    domain = tables.Column("domain", verbose_name=_("Domain"))
-    sid = tables.Column("sid", verbose_name=_("Sid"))
-
-    def get_object_display(self, security_service):
-        return security_service.name
-
-    def get_object_id(self, security_service):
-        return str(security_service.id)
-
-    class Meta:
-        name = "security_services"
-        verbose_name = _("Security Services")
-        permissions = ('openstack.roles.reselleradmin', )
-        table_actions = (CreateSecurityService, DeleteSecurityService)
-        row_actions = (DeleteSecurityService,)
+        row_actions = (EditShareNetwork, DeleteShareNetwork,
+                       ActivateShareNetwork, DeactivateShareNetwork)

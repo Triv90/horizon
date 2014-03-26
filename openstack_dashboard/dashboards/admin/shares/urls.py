@@ -17,11 +17,5 @@ from openstack_dashboard.dashboards.admin.shares import views
 
 urlpatterns = patterns('',
     url(r'^$', views.IndexView.as_view(), name='index'),
-    url(r'^create_security_service$',
-        views.CreateSecurityServiceView.as_view(),
-        name='create_security_service'),
-    url(r'^create_share_network$',
-        views.CreateShareNetworkView.as_view(),
-        name='create_share_network'),
     url(r'^(?P<share_id>[^/]+)/$', views.DetailView.as_view(), name='detail'),
 )

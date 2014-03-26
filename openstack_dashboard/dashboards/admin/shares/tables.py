@@ -31,7 +31,7 @@ class SharesTable(project_tables.SharesTable):
     name = tables.Column("name",
                          verbose_name=_("Name"),
                          link="horizon:admin:shares:detail")
-    host = tables.Column("os-shr-host-attr:host", verbose_name=_("Host"))
+    host = tables.Column("host", verbose_name=_("Host"))
     tenant = tables.Column("tenant_name", verbose_name=_("Project"))
 
     class Meta:
@@ -44,14 +44,6 @@ class SharesTable(project_tables.SharesTable):
         columns = ('tenant', 'host', 'name', 'size', 'status', 'protocol',)
 
 
-class CreateSecurityService(tables.LinkAction):
-    name = "create"
-    verbose_name = _("Create Security Service")
-    url = "horizon:admin:shares:create_security_service"
-    classes = ("ajax-modal", "btn-create")
-    #policy_rules = (("share", "volume_extension:types_manage"),)
-
-
 class DeleteSecurityService(tables.DeleteAction):
     data_type_singular = _("Security Service")
     data_type_plural = _("Security Services")
@@ -59,14 +51,6 @@ class DeleteSecurityService(tables.DeleteAction):
 
     def delete(self, request, obj_id):
         manila.security_service_delete(request, obj_id)
-
-
-class CreateShareNetwork(tables.LinkAction):
-    name = "create"
-    verbose_name = _("Create Share Network")
-    url = "horizon:admin:shares:create_share_network"
-    classes = ("ajax-modal", "btn-create")
-    #policy_rules = (("share", "volume_extension:types_manage"),)
 
 
 class DeleteShareNetwork(tables.DeleteAction):
@@ -96,7 +80,7 @@ class SecurityServiceTable(tables.DataTable):
     class Meta:
         name = "security_services"
         verbose_name = _("Security Services")
-        table_actions = (CreateSecurityService, DeleteSecurityService)
+        table_actions = (DeleteSecurityService,)
         row_actions = (DeleteSecurityService,)
 
 
@@ -124,5 +108,5 @@ class ShareNetworkTable(tables.DataTable):
     class Meta:
         name = "share_networks"
         verbose_name = _("Share Networks")
-        table_actions = (CreateShareNetwork, DeleteShareNetwork)
-        row_actions = (DeleteShareNetwork,)
+        table_actions = (DeleteShareNetwork, )
+        row_actions = (DeleteShareNetwork, )

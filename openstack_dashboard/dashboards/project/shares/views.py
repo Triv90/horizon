@@ -59,36 +59,9 @@ class ShareTableMixIn(object):
                 share.name = share.id
 
 
-class IndexView(tables.MultiTableView, ShareTableMixIn):
-    table_classes = (project_tables.SharesTable,
-                     project_tables.ShareNetworkTable,
-                     project_tables.SecurityServiceTable)
-    template_name = 'project/shares/index.html'
-
-    def get_shares_data(self):
-        shares = self._get_shares()
-        self._set_id_if_nameless(shares)
-        return shares
-
-    def get_security_services_data(self):
-        try:
-            security_services = manila.security_service_list(
-                self.request)
-        except Exception:
-            security_services = []
-            exceptions.handle(self.request,
-                              _("Unable to retrieve security services"))
-        return security_services
-
-    def get_share_networks_data(self):
-        try:
-            share_networks = manila.share_network_list(
-                self.request)
-        except Exception:
-            share_networks = []
-            exceptions.handle(self.request,
-                              _("Unable to retrieve share networks"))
-        return share_networks
+class IndexView(tabs.TabbedTableView):
+    tab_group_class = project_tabs.ShareTabs
+    template_name = "admin/shares/index.html"
 
 
 class DetailView(tabs.TabView):
@@ -187,29 +160,37 @@ class UpdateView(forms.ModalFormView):
                 'description': share.display_description}
 
 
-class CreateSecurityServiceView(forms.ModalFormView):
-    form_class = project_forms.CreateSecurityServiceForm
-    template_name = 'project/shares/create_security_service.html'
-    success_url = reverse_lazy("horizon:project:shares:index")
+class UpdateShareNetworkView(forms.ModalFormView):
+    template_name = "project/shares/share_network_update.html"
+    form_class = project_forms.UpdateShareNetworkForm
+    success_url = 'horizon:admin:shares:index'
 
-    def get_context_data(self, **kwargs):
-        context = super(CreateSecurityServiceView, self).get_context_data(**kwargs)
-        try:
-            context['usages'] = quotas.tenant_limit_usages(self.request)
-        except Exception:
-            exceptions.handle(self.request)
-        return context
+    def get_success_url(self):
+        return reverse(self.success_url)
+
+
+class UpdateSecurityServiceView(forms.ModalFormView):
+    template_name = "project/shares/share_network_update.html"
+    form_class = project_forms.UpdateSecurityServiceForm
+    success_url = 'horizon:admin:shares:index'
+
+    def get_success_url(self):
+        return reverse(self.success_url)
+
+
+class CreateSecurityServiceView(forms.ModalFormView):
+    form_class = project_forms.CreateSecurityService
+    template_name = 'project/shares/create_security_service.html'
+    success_url = 'horizon:project:shares:index'
+
+    def get_success_url(self):
+        return reverse(self.success_url)
 
 
 class CreateShareNetworkView(forms.ModalFormView):
     form_class = project_forms.CreateShareNetworkForm
     template_name = 'project/shares/create_share_network.html'
-    success_url = reverse_lazy("horizon:project:shares:index")
+    success_url = 'horizon:project:shares:index'
 
-    def get_context_data(self, **kwargs):
-        context = super(CreateShareNetworkView, self).get_context_data(**kwargs)
-        try:
-            context['usages'] = quotas.tenant_limit_usages(self.request)
-        except Exception:
-            exceptions.handle(self.request)
-        return context
+    def get_success_url(self):
+        return reverse(self.success_url)

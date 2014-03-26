@@ -33,6 +33,7 @@ from horizon.utils import functions
 from horizon.utils.memoized import memoized  # noqa
 
 from openstack_dashboard import api
+from openstack_dashboard.api import keystone
 from openstack_dashboard.api import manila
 from openstack_dashboard.api import neutron
 from openstack_dashboard.dashboards.project.images_and_snapshots import utils
@@ -243,7 +244,7 @@ class UpdateForm(forms.SelfHandlingForm):
                               redirect=redirect)
 
 
-class CreateSecurityServiceForm(forms.SelfHandlingForm):
+class CreateSecurityService(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Name"))
     dns_ip = forms.CharField(max_length="15", label=_("DNS IP"))
     server = forms.CharField(max_length="255", label=_("Server"))
@@ -260,11 +261,11 @@ class CreateSecurityServiceForm(forms.SelfHandlingForm):
 
     def handle(self, request, data):
         try:
+            # Remove any new lines in the public key
             security_service = manila.security_service_create(
                 request, **data)
-            messages.success(request,
-                             _('Successfully created security service: %s')
-                             % data['name'])
+            messages.success(request, _('Successfully created security service: %s')
+                                      % data['name'])
             return security_service
         except Exception:
             exceptions.handle(request,
@@ -274,8 +275,12 @@ class CreateSecurityServiceForm(forms.SelfHandlingForm):
 
 class CreateShareNetworkForm(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Name"))
-    neutron_net_id = forms.ChoiceField(label=_("Neutron Net ID"))
-    neutron_subnet_id = forms.ChoiceField(label=_("Neutron Subnet ID"))
+    neutron_net_id = forms.ChoiceField(choices=(), label=_("Neutron Net ID"))
+    neutron_subnet_id = forms.ChoiceField(choices=(),
+                                          label=_("Neutron Subnet ID"))
+    #security_service = forms.MultipleChoiceField(
+    #    widget=forms.SelectMultiple,
+    #    label=_("Security Service"))
     description = forms.CharField(widget=forms.Textarea,
                                   label=_("Description"), required=False)
 
@@ -284,6 +289,8 @@ class CreateShareNetworkForm(forms.SelfHandlingForm):
             request, *args, **kwargs)
         net_choices = neutron.network_list(request)
         subnet_choices = neutron.subnet_list(request)
+        sec_services_choices = manila.security_service_list(
+            request, search_opts={'all_tenants': True})
         self.fields['neutron_net_id'].choices = [(' ', ' ')] + \
                                                 [(choice.id, choice.name_or_id)
                                                  for choice in net_choices]
@@ -291,15 +298,62 @@ class CreateShareNetworkForm(forms.SelfHandlingForm):
                                                    [(choice.id,
                                                      choice.name_or_id) for
                                                     choice in subnet_choices]
+        #self.fields['security_service'].choices = [(choice.id,
+        #                                             choice.name) for
+        #                                            choice in
+        #                                            sec_services_choices]
 
     def handle(self, request, data):
         try:
+            # Remove any new lines in the public key
             share_network = manila.share_network_create(request, **data)
-            messages.success(request,
-                             _('Successfully created share network: %s')
-                             % data['name'])
+            messages.success(request, _('Successfully created share network: %s')
+                                      % data['name'])
             return share_network
         except Exception:
             exceptions.handle(request,
                               _('Unable to create share network.'))
             return False
+
+
+class UpdateShareNetworkForm(forms.SelfHandlingForm):
+    name = forms.CharField(max_length="255", label=_("Share Name"))
+    description = forms.CharField(widget=forms.Textarea,
+            label=_("Description"), required=False)
+
+    def handle(self, request, data):
+        share_net_id = self.initial['share_network_id']
+        try:
+            manila.share_network_update(request, share_net_id,
+                                        name=data['name'],
+                                        description=data['description'])
+
+            message = _('Updating share network "%s"') % data['name']
+            messages.info(request, message)
+            return True
+        except Exception:
+            redirect = reverse("horizon:project:shares:index")
+            exceptions.handle(request,
+                              _('Unable to update share network.'),
+                              redirect=redirect)
+
+
+class UpdateSecurityServiceForm(forms.SelfHandlingForm):
+    name = forms.CharField(max_length="255", label=_("Share Name"))
+    description = forms.CharField(widget=forms.Textarea,
+            label=_("Description"), required=False)
+
+    def handle(self, request, data):
+        sec_service_id = self.initial['security_service_id']
+        try:
+            manila.security_service_update(request, sec_service_id, data['name'],
+                                 data['description'])
+
+            message = _('Updating security service "%s"') % data['name']
+            messages.info(request, message)
+            return True
+        except Exception:
+            redirect = reverse("horizon:project:shares:index")
+            exceptions.handle(request,
+                              _('Unable to update security service.'),
+                              redirect=redirect)
