@@ -250,7 +250,12 @@ class CreateSecurityService(forms.SelfHandlingForm):
     server = forms.CharField(max_length="255", label=_("Server"))
     domain = forms.CharField(max_length="255", label=_("Domain"))
     sid = forms.CharField(max_length="255", label=_("Sid"))
-    password = forms.CharField(max_length="255", label=_("Password"))
+    password = forms.CharField(
+        label=_("Password"),
+        widget=forms.PasswordInput(render_value=False))
+    confirm_password = forms.CharField(
+        label=_("Confirm Password"),
+        widget=forms.PasswordInput(render_value=False))
     type = forms.ChoiceField(choices=(("", ""),
                                       ("active_directory", "Active Directory"),
                                       ("ldap", "LDAP"),
