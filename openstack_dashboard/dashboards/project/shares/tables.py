@@ -299,6 +299,13 @@ class SecurityServiceTable(tables.DataTable):
 
 
 class ShareNetworkTable(tables.DataTable):
+    STATUS_CHOICES = (
+        ("ACTIVE", True),
+        ("INACTIVE", True),
+        ("ACTIVATING", None),
+        ("DEACTIVATING", None),
+        ("ERROR", False),
+    )
     name = tables.Column("name", verbose_name=_("Name"))
     ip_version = tables.Column("ip_version", verbose_name=_("IP Version"))
     network_type = tables.Column("network_type",
@@ -309,7 +316,9 @@ class ShareNetworkTable(tables.DataTable):
                                    verbose_name=_("Neutron Subnet ID"))
     segmentation_id = tables.Column("segmentation_id",
                                     verbose_name=_("Segmentation Id"))
-    status = tables.Column("status", verbose_name=_("Status"))
+    status = tables.Column("status", verbose_name=_("Status"),
+                           status=True,
+                           status_choices=STATUS_CHOICES)
 
     def get_object_display(self, share_network):
         return share_network.name
@@ -321,5 +330,6 @@ class ShareNetworkTable(tables.DataTable):
         name = "share_networks"
         verbose_name = _("Share Networks")
         table_actions = (CreateShareNetwork, DeleteShareNetwork)
+        status_columns = ["status"]
         row_actions = (EditShareNetwork, DeleteShareNetwork,
                        ActivateShareNetwork, DeactivateShareNetwork)
