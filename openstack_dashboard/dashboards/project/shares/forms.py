@@ -49,7 +49,7 @@ class CreateForm(forms.SelfHandlingForm):
                              required=False)
     size = forms.IntegerField(min_value=1, label=_("Size (GB)"))
     share_network = forms.ChoiceField(label=_("Share Network"),
-                                      required=True)
+                                      required=False)
     share_source_type = forms.ChoiceField(label=_("Share Source"),
                                            required=False,
                                            widget=forms.Select(attrs={
@@ -69,7 +69,8 @@ class CreateForm(forms.SelfHandlingForm):
         share_networks = manila.share_network_list(request)
         self.fields['type'].choices = [(type, type)
                                        for type in share_types]
-        self.fields['share_network'].choices = [(net.id, net.id) for net
+        self.fields['share_network'].choices = [("", "")] + \
+                                               [(net.id, net.id) for net
                                                 in share_networks]
 
         if "snapshot_id" in request.GET:
