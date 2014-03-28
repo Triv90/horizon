@@ -92,6 +92,32 @@ class DetailView(tabs.TabView):
         return self.tab_group_class(request, share=share, **kwargs)
 
 
+class SnapshotDetailView(tabs.TabView):
+    tab_group_class = project_tabs.SnapshotDetailTabs
+    template_name = 'project/shares/snapshot_detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(SnapshotDetailView, self).get_context_data(**kwargs)
+        context["snapshot"] = self.get_data()
+        return context
+
+    @memoized.memoized_method
+    def get_data(self):
+        try:
+            snapshot_id = self.kwargs['snapshot_id']
+            snapshot = manila.share_snapshot_get(self.request, snapshot_id)
+        except Exception:
+            redirect = reverse('horizon:project:shares:index')
+            exceptions.handle(self.request,
+                              _('Unable to retrieve snapshot details.'),
+                              redirect=redirect)
+        return snapshot
+
+    def get_tabs(self, request, *args, **kwargs):
+        snapshot = self.get_data()
+        return self.tab_group_class(request, snapshot=snapshot, **kwargs)
+
+
 class CreateView(forms.ModalFormView):
     form_class = project_forms.CreateForm
     template_name = 'project/shares/create.html'

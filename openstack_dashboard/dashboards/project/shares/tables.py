@@ -17,9 +17,10 @@
 from django.core.urlresolvers import NoReverseMatch  # noqa
 from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title  # noqa
+from django.utils import safestring
 from django.utils.translation import string_concat  # noqa
 from django.utils.translation import ugettext_lazy as _
-
+from django.utils import html
 
 from horizon import exceptions
 from horizon import tables
@@ -95,6 +96,16 @@ class CreateSnapshot(tables.LinkAction):
         return {"project_id": project_id}
 
     def allowed(self, request, share=None):
+        usages = quotas.tenant_quota_usages(request)
+        if usages['snapshots']['available'] <= 0:
+            if "disabled" not in self.classes:
+                self.classes = [c for c in self.classes] + ['disabled']
+                self.verbose_name = string_concat(self.verbose_name, ' ',
+                                                  _("(Quota exceeded)"))
+        else:
+            self.verbose_name = _("Create Share")
+            classes = [c for c in self.classes if c != "disabled"]
+            self.classes = classes
         return share.status in ("available", "in-use")
 
 
@@ -188,6 +199,11 @@ class SharesTableBase(tables.DataTable):
         return obj.name
 
 
+class SnapshotShareNameColumn(tables.Column):
+    def get_link_url(self, snapshot):
+        return reverse(self.link, args=(snapshot.share_id,))
+
+
 class SnapshotsTable(tables.DataTable):
     STATUS_CHOICES = (
         ("in-use", True),
@@ -197,7 +213,7 @@ class SnapshotsTable(tables.DataTable):
     )
     name = tables.Column("name",
                          verbose_name=_("Name"),
-                         link="horizon:project:shares:detail")
+                         link="horizon:project:shares:snapshot-detail")
     description = tables.Column("description",
                                 verbose_name=_("Description"),
                                 truncate=40)
@@ -209,9 +225,9 @@ class SnapshotsTable(tables.DataTable):
                            verbose_name=_("Status"),
                            status=True,
                            status_choices=STATUS_CHOICES)
-    source = tables.Column("share_id",
-                           verbose_name=_("Source"),
-                           link="horizon:project:shares:detail")
+    source = SnapshotShareNameColumn("share_id",
+                                     verbose_name=_("Source"),
+                                     link="horizon:project:shares:detail")
 
     def get_object_display(self, obj):
         return obj.name
@@ -307,6 +323,16 @@ class ActivateShareNetwork(tables.BatchAction):
         return reverse('horizon:project:shares:index')
 
     def allowed(self, request, share=None):
+        usages = quotas.tenant_quota_usages(request)
+        if usages['share-networks']['available'] <= 0:
+            if "disabled" not in self.classes:
+                self.classes = [c for c in self.classes] + ['disabled']
+                self.verbose_name = string_concat(self.verbose_name, ' ',
+                                                  _("(Quota exceeded)"))
+        else:
+            self.verbose_name = _("Activate Share Network")
+            classes = [c for c in self.classes if c != "disabled"]
+            self.classes = classes
         return share.status == "INACTIVE"
 
 

@@ -140,6 +140,21 @@ class OverviewTab(tabs.Tab):
         return {"share": self.tab_group.kwargs['share']}
 
 
+class SnapshotOverviewTab(tabs.Tab):
+    name = _("Overview")
+    slug = "overview"
+    template_name = ("project/shares/"
+                     "_snapshot_detail_overview.html")
+
+    def get_context_data(self, request):
+        return {"snapshot": self.tab_group.kwargs['snapshot']}
+
+
 class ShareDetailTabs(tabs.TabGroup):
     slug = "share_details"
     tabs = (OverviewTab,)
+
+
+class SnapshotDetailTabs(tabs.TabGroup):
+    slug = "snapshot_details"
+    tabs = (SnapshotOverviewTab,)

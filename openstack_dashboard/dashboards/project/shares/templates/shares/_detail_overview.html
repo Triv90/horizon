@@ -30,24 +30,6 @@
     <dd>{{ share.created_at|parse_date }}</dd>
   </dl>
 </div>
-{##}
-{#<div class="status row-fluid detail">#}
-{#  <h4>{% trans "Attachments" %}</h4>#}
-{#  <hr class="header_rule">#}
-{#  <dl>#}
-{#  {% for attachment in share.attachments %}#}
-{#      <dt>{% trans "Attached To" %}</dt>#}
-{#      <dd>#}
-{#        {% url 'horizon:project:instances:detail' attachment.server_id as instance_url%}#}
-{#        <a href="{{ instance_url }}">{{ attachment.instance.name }}</a>#}
-{#        <span> {% trans "on" %} {{ attachment.device }}</span>#}
-{#      </dd>#}
-{#  {% empty %}#}
-{#      <dt>{% trans "Attached To" %}</dt>#}
-{#      <dd><em>{% trans "Not attached" %}</em></dd>#}
-{#  {% endfor %}#}
-{#  </dl>#}
-{#</div>#}
 
 <div class="status row-fluid detail">
   <h4>{% trans "Metadata" %}</h4>
