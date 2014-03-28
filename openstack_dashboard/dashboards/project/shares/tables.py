@@ -209,7 +209,7 @@ class SnapshotsTable(tables.DataTable):
                            verbose_name=_("Status"),
                            status=True,
                            status_choices=STATUS_CHOICES)
-    source = tables.Column("source",
+    source = tables.Column("share_id",
                            verbose_name=_("Source"),
                            link="horizon:project:shares:detail")
 
@@ -221,7 +221,7 @@ class SnapshotsTable(tables.DataTable):
         verbose_name = _("Snapshots")
         status_columns = ["status"]
         row_class = UpdateRow
-        table_actions = (CreateSnapshot, DeleteSnapshot)
+        table_actions = (DeleteSnapshot, )
         row_actions = (DeleteSnapshot, )
 
 
