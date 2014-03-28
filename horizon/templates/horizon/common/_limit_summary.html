@@ -51,7 +51,7 @@
       </strong>
     </div>
   {% endif %}
-  {% if usage.limits.totalVolumesUsed >= 0 %}
+  {% if usage.limits.totalSharesUsed >= 0 %}
     <div class="d3_quota_bar">
       <div class="d3_pie_chart_usage" data-used="{% widthratio usage.limits.totalSharesUsed usage.limits.maxTotalShares 100 %}"></div>
       <strong>{% trans "Shares" %} <br />
