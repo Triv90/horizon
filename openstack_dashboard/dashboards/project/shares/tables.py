@@ -352,6 +352,10 @@ class DeactivateShareNetwork(tables.BatchAction):
         return reverse('horizon:project:shares:index')
 
     def allowed(self, request, share=None):
+        shares = manila.share_list(request,
+                                   search_opts={'share_network_id': share.id})
+        if shares:
+            return False
         return share.status == "ACTIVE"
 
 
