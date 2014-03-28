@@ -69,9 +69,9 @@ class CreateForm(forms.SelfHandlingForm):
         share_networks = manila.share_network_list(request)
         self.fields['type'].choices = [(type, type)
                                        for type in share_types]
-        self.fields['share_network'].choices = [("", "")] + \
-                                               [(net.id, net.id) for net
-                                                in share_networks]
+        self.fields['share_network'].choices = \
+            [("", "")] + [(net.id, net.id) for net in share_networks if
+                          net.status == "ACTIVE"]
 
         if "snapshot_id" in request.GET:
             try:
@@ -218,7 +218,7 @@ class CreateSnapshotForm(forms.SelfHandlingForm):
             messages.info(request, message)
             return snapshot
         except Exception:
-            redirect = reverse("horizon:project:images_and_snapshots:index")
+            redirect = reverse("horizon:project:shares:index")
             exceptions.handle(request,
                               _('Unable to create share snapshot.'),
                               redirect=redirect)
@@ -227,7 +227,7 @@ class CreateSnapshotForm(forms.SelfHandlingForm):
 class UpdateForm(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Share Name"))
     description = forms.CharField(widget=forms.Textarea,
-            label=_("Description"), required=False)
+                                  label=_("Description"), required=False)
 
     def handle(self, request, data):
         share_id = self.initial['share_id']
@@ -272,7 +272,7 @@ class CreateSecurityService(forms.SelfHandlingForm):
             if data['password'] != data.get('confirm_password', None):
                 raise ValidationError(_('Passwords do not match.'))
         return data
-    
+
     @sensitive_variables('data')
     def handle(self, request, data):
         try:
