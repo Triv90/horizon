@@ -243,11 +243,10 @@ def tenant_quota_usages(request):
     if 'shares' not in disabled_quotas:
         shares = manila.share_list(request)
         snapshots = manila.share_snapshot_list(request)
-        share_networks = manila.share_network_list(request)
+        sn_l = manila.share_network_list(request)
         usages.tally('gigabytes', sum([int(v.size) for v in shares]))
         usages.tally('shares', len(shares))
         usages.tally('snapshots', len(snapshots))
-        sn_l = share_networks["share_networks"]
         sn_u = sum([1 if v["status"] == "ACTIVE" else 0 for v in sn_l])
         usages.tally('share_networks', sn_u)
 
