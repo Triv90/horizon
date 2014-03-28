@@ -184,6 +184,18 @@ class BaseUsage(object):
 
         return
 
+    def get_manila_limits(self):
+        """Get share limits if manila is enabled."""
+        if not api.base.is_service_enabled(self.request, 'share'):
+            return
+        try:
+            self.limits.update(api.manila.tenant_absolute_limits(self.request))
+        except Exception:
+            msg = _("Unable to retrieve share limit information.")
+            exceptions.handle(self.request, msg)
+
+        return
+
     def get_limits(self):
         try:
             self.limits = api.nova.tenant_absolute_limits(self.request)
@@ -192,6 +204,7 @@ class BaseUsage(object):
                               _("Unable to retrieve limit information."))
         self.get_neutron_limits()
         self.get_cinder_limits()
+        self.get_manila_limits()
 
     def get_usage_list(self, start, end):
         raise NotImplementedError("You must define a get_usage_list method.")

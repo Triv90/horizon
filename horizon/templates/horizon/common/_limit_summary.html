@@ -51,4 +51,26 @@
       </strong>
     </div>
   {% endif %}
+  {% if usage.limits.totalVolumesUsed >= 0 %}
+    <div class="d3_quota_bar">
+      <div class="d3_pie_chart_usage" data-used="{% widthratio usage.limits.totalSharesUsed usage.limits.maxTotalShares 100 %}"></div>
+      <strong>{% trans "Shares" %} <br />
+        {% blocktrans with used=usage.limits.totalSharesUsed|intcomma available=usage.limits.maxTotalShares|quotainf|intcomma %}Used <span> {{ used }} </span> of <span> {{ available }} </span>{% endblocktrans %}
+      </strong>
+    </div>
+
+    <div class="d3_quota_bar">
+      <div class="d3_pie_chart_usage" data-used="{% widthratio usage.limits.totalGigabytesUsed usage.limits.maxTotalShareGigabytes 100 %}"></div>
+      <strong>{% trans "Share Storage" %} <br />
+        {% blocktrans with used=usage.limits.totalGigabytesUsed|diskgbformat available=usage.limits.maxTotalShareGigabytes|quotainf|diskgbformat %}Used <span> {{ used }} </span> of <span> {{ available  }} </span>{% endblocktrans %}
+      </strong>
+    </div>
+
+    <div class="d3_quota_bar">
+      <div class="d3_pie_chart_usage" data-used="{% widthratio usage.limits.totalShareNetworksUsed usage.limits.maxTotalShareNetworks 100 %}"></div>
+      <strong>{% trans "Share-networks" %} <br />
+        {% blocktrans with used=usage.limits.totalShareNetworksUsed|intcomma available=usage.limits.maxTotalShareNetworks|quotainf|intcomma %}Used <span> {{ used }} </span> of <span> {{ available  }} </span>{% endblocktrans %}
+      </strong>
+    </div>
+  {% endif %}
 </div>

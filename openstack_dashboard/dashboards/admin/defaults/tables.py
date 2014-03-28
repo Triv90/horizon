@@ -47,6 +47,8 @@ def get_quota_name(quota):
         'instances': _('Instances'),
         'injected_files': _('Injected Files'),
         'volumes': _('Volumes'),
+        'shares': _('Shares'),
+        'share_networks': _('Share Networks'),
         'snapshots': _('Snapshots'),
         'gigabytes': _('Gigabytes'),
         'ram': _('RAM (MB)'),
