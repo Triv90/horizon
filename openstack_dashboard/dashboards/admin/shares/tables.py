@@ -59,7 +59,7 @@ class DeleteShareNetwork(tables.DeleteAction):
     #policy_rules = (("volume", "volume_extension:types_manage"),)
 
     def delete(self, request, obj_id):
-        manila.security_service_delete(request, obj_id)
+        manila.share_network_delete(request, obj_id)
 
 
 class SecurityServiceTable(tables.DataTable):
