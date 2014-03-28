@@ -158,8 +158,8 @@ class UpdateView(forms.ModalFormView):
     def get_initial(self):
         share = self.get_object()
         return {'share_id': self.kwargs["share_id"],
-                'name': share.display_name,
-                'description': share.display_description}
+                'name': share.name,
+                'description': share.description}
 
 
 class UpdateShareNetworkView(workflows.WorkflowView):
