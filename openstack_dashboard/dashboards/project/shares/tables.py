@@ -324,7 +324,7 @@ class ActivateShareNetwork(tables.BatchAction):
 
     def allowed(self, request, share=None):
         usages = quotas.tenant_quota_usages(request)
-        if usages['share-networks']['available'] <= 0:
+        if usages['share_networks']['available'] <= 0:
             if "disabled" not in self.classes:
                 self.classes = [c for c in self.classes] + ['disabled']
                 self.verbose_name = string_concat(self.verbose_name, ' ',
