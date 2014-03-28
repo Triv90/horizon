@@ -26,6 +26,7 @@ from horizon import exceptions
 from horizon import forms
 from horizon import tables
 from horizon import tabs
+from horizon.utils import memoized
 
 from openstack_dashboard.api import manila
 from openstack_dashboard.api import keystone
@@ -47,3 +48,29 @@ class IndexView(tabs.TabbedTableView, views.ShareTableMixIn):
 
 class DetailView(views.DetailView):
     template_name = "admin/shares/detail.html"
+
+
+class SnapshotDetailView(tabs.TabView):
+    tab_group_class = project_tabs.SnapshotDetailTabs
+    template_name = 'project/shares/snapshot_detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(SnapshotDetailView, self).get_context_data(**kwargs)
+        context["snapshot"] = self.get_data()
+        return context
+
+    @memoized.memoized_method
+    def get_data(self):
+        try:
+            snapshot_id = self.kwargs['snapshot_id']
+            snapshot = manila.share_snapshot_get(self.request, snapshot_id)
+        except Exception:
+            redirect = reverse('horizon:project:shares:index')
+            exceptions.handle(self.request,
+                              _('Unable to retrieve snapshot details.'),
+                              redirect=redirect)
+        return snapshot
+
+    def get_tabs(self, request, *args, **kwargs):
+        snapshot = self.get_data()
+        return self.tab_group_class(request, snapshot=snapshot, **kwargs)

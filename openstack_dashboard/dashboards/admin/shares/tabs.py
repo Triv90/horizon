@@ -1,11 +1,4 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2012 United States Government as represented by the
-# Administrator of the National Aeronautics and Space Administration.
-# All Rights Reserved.
-#
-# Copyright 2012 Nebula, Inc.
-# Copyright 2012 OpenStack Foundation
+# Copyright 2014 OpenStack Foundation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -30,6 +23,8 @@ from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.admin.\
     shares.tables import SharesTable
 from openstack_dashboard.dashboards.admin.\
+    shares.tables import SnapshotsTable
+from openstack_dashboard.dashboards.admin.\
     shares.tables import SecurityServiceTable
 from openstack_dashboard.dashboards.admin.\
     shares.tables import ShareNetworkTable
@@ -48,6 +43,29 @@ def set_tenant_name_to_objects(request, objects):
         tenant_id = getattr(obj, "project_id", None)
         tenant = tenant_dict.get(tenant_id, None)
         obj.tenant_name = getattr(tenant, "name", None)
+
+
+class SnapshotsTab(tabs.TableTab):
+    table_classes = (SnapshotsTable, )
+    name = _("Snapshots")
+    slug = "snapshots_tab"
+    template_name = "horizon/common/_detail_table.html"
+
+    def _set_id_if_nameless(self, snapshots):
+        for snap in snapshots:
+            if not snap.name:
+                snap.name = snap.id
+
+    def get_snapshots_data(self):
+        try:
+            snapshots = manila.share_snapshot_list(self.request)
+        except Exception:
+            msg = _("Unable to retrieve snapshot list.")
+            exceptions.handle(self.request, msg)
+            return []
+        #Gather our tenants to correlate against IDs
+        set_tenant_name_to_objects(self.request, snapshots)
+        return snapshots
 
 
 class SharesTab(tabs.TableTab):
@@ -116,6 +134,20 @@ class ShareNetworkTab(tabs.TableTab):
 
 class ShareTabs(tabs.TabGroup):
     slug = "share_tabs"
-    tabs = (SecurityServiceTab, ShareNetworkTab, SharesTab)
+    tabs = (SecurityServiceTab, ShareNetworkTab, SharesTab, SnapshotsTab, )
     sticky = True
 
+
+class SnapshotOverviewTab(tabs.Tab):
+    name = _("Snapshot Overview")
+    slug = "snapshot_overview_tab"
+    template_name = ("admin/shares/"
+                     "_snapshot_detail_overview.html")
+
+    def get_context_data(self, request):
+        return {"snapshot": self.tab_group.kwargs['snapshot']}
+
+
+class SnapshotDetailTabs(tabs.TabGroup):
+    slug = "snapshot_details"
+    tabs = (SnapshotOverviewTab,)
