@@ -24,6 +24,7 @@ from django.core.urlresolvers import reverse
 from django.forms import ValidationError  # noqa
 from django.template.defaultfilters import filesizeformat  # noqa
 from django.utils.translation import ugettext_lazy as _
+from django.views.decorators.debug import sensitive_variables
 
 from horizon import exceptions
 from horizon import forms
@@ -264,9 +265,18 @@ class CreateSecurityService(forms.SelfHandlingForm):
     description = forms.CharField(widget=forms.Textarea,
                                   label=_("Description"), required=False)
 
+    def clean(self):
+        '''Check to make sure password fields match.'''
+        data = super(forms.Form, self).clean()
+        if 'password' in data:
+            if data['password'] != data.get('confirm_password', None):
+                raise ValidationError(_('Passwords do not match.'))
+        return data
+    
+    @sensitive_variables('data')
     def handle(self, request, data):
         try:
-            # Remove any new lines in the public key
+            data.pop('confirm_password')
             security_service = manila.security_service_create(
                 request, **data)
             messages.success(request, _('Successfully created security service: %s')
