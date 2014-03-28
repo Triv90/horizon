@@ -57,7 +57,14 @@ NEUTRON_QUOTA_FIELDS = ("network",
                         "security_group_rule",
                         )
 
-QUOTA_FIELDS = NOVA_QUOTA_FIELDS + CINDER_QUOTA_FIELDS + NEUTRON_QUOTA_FIELDS
+MANILA_QUOTA_FIELDS = (
+    "shares",
+    "snapshots",
+    "gigabytes",
+    "share_networks",
+)
+
+QUOTA_FIELDS = NOVA_QUOTA_FIELDS + CINDER_QUOTA_FIELDS + NEUTRON_QUOTA_FIELDS + MANILA_QUOTA_FIELDS
 
 
 class QuotaUsage(dict):
@@ -121,8 +128,10 @@ def _get_quota_data(request, method_name, disabled_quotas=None,
         disabled_quotas = get_disabled_quotas(request)
     if 'volumes' not in disabled_quotas:
         quotasets.append(getattr(cinder, method_name)(request, tenant_id))
+
     if 'shares' not in disabled_quotas:
         quotasets.append(getattr(manila, method_name)(request, tenant_id))
+
     for quota in itertools.chain(*quotasets):
         if quota.name not in disabled_quotas:
             qs[quota.name] = quota.limit
@@ -167,6 +176,10 @@ def get_disabled_quotas(request):
     # Cinder
     if not base.is_service_enabled(request, 'volume'):
         disabled_quotas.extend(CINDER_QUOTA_FIELDS)
+
+    # Manila
+    if not base.is_service_enabled(request, 'share'):
+        disabled_quotas.extend(MANILA_QUOTA_FIELDS)
 
     # Neutron
     if not base.is_service_enabled(request, 'network'):
@@ -227,8 +240,16 @@ def tenant_quota_usages(request):
         usages.tally('volumes', len(volumes))
         usages.tally('snapshots', len(snapshots))
 
-    shares = manila.share_list(request)
-    usages.tally('shares', len(shares))
+    if 'shares' not in disabled_quotas:
+        shares = manila.share_list(request)
+        snapshots = manila.share_snapshot_list(request)
+        share_networks = manila.share_network_list(request)
+        usages.tally('gigabytes', sum([int(v.size) for v in shares]))
+        usages.tally('shares', len(shares))
+        usages.tally('snapshots', len(snapshots))
+        sn_l = share_networks["share_networks"]
+        sn_u = sum([1 if v["status"] == "ACTIVE" else 0 for v in sn_l])
+        usages.tally('share_networks', sn_u)
 
     # Sum our usage based on the flavors of the instances.
     for flavor in [flavors[instance.flavor['id']] for instance in instances]:
@@ -265,5 +286,17 @@ def tenant_limit_usages(request):
         except Exception:
             msg = _("Unable to retrieve volume limit information.")
             exceptions.handle(request, msg)
+
+#    if base.is_service_enabled(request, 'share'):
+#        try:
+#            limits.update(manila.tenant_absolute_limits(request))
+#            shares = manila.share_list(request)
+#            total_size = sum([getattr(share, 'size', 0) for share
+#                              in shares])
+#            limits['gigabytesUsed'] = total_size
+#            limits['sharesUsed'] = len(shares)
+#        except Exception:
+#            msg = _("Unable to retrieve share limit information.")
+#            exceptions.handle(request, msg)
 
     return limits
