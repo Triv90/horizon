@@ -36,7 +36,6 @@ from openstack_dashboard import api
 from openstack_dashboard.api import keystone
 from openstack_dashboard.api import manila
 from openstack_dashboard.api import neutron
-from openstack_dashboard.dashboards.project.images_and_snapshots import utils
 from openstack_dashboard.dashboards.project.instances import tables
 from openstack_dashboard.usage import quotas
 
@@ -44,17 +43,17 @@ from openstack_dashboard.usage import quotas
 class CreateForm(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Share Name"))
     description = forms.CharField(widget=forms.Textarea,
-            label=_("Description"), required=False)
+                                  label=_("Description"), required=False)
     type = forms.ChoiceField(label=_("Type"),
                              required=False)
     size = forms.IntegerField(min_value=1, label=_("Size (GB)"))
     share_network = forms.ChoiceField(label=_("Share Network"),
                                       required=False)
     share_source_type = forms.ChoiceField(label=_("Share Source"),
-                                           required=False,
-                                           widget=forms.Select(attrs={
-                                               'class': 'switchable',
-                                               'data-slug': 'source'}))
+                                          required=False,
+                                          widget=forms.Select(attrs={
+                                              'class': 'switchable',
+                                              'data-slug': 'source'}))
     snapshot_source = forms.ChoiceField(
         label=_("Use snapshot as a source"),
         widget=fields.SelectWidget(
@@ -284,9 +283,6 @@ class CreateShareNetworkForm(forms.SelfHandlingForm):
     neutron_net_id = forms.ChoiceField(choices=(), label=_("Neutron Net ID"))
     neutron_subnet_id = forms.ChoiceField(choices=(),
                                           label=_("Neutron Subnet ID"))
-    #security_service = forms.MultipleChoiceField(
-    #    widget=forms.SelectMultiple,
-    #    label=_("Security Service"))
     description = forms.CharField(widget=forms.Textarea,
                                   label=_("Description"), required=False)
 
@@ -327,7 +323,7 @@ class UpdateShareNetworkForm(forms.SelfHandlingForm):
     description = forms.CharField(widget=forms.Textarea,
             label=_("Description"), required=False)
 
-    def handle(self, request, data):
+    def handle(self, request, data, *args, **kwargs):
         share_net_id = self.initial['share_network_id']
         try:
             manila.share_network_update(request, share_net_id,
@@ -363,3 +359,26 @@ class UpdateSecurityServiceForm(forms.SelfHandlingForm):
             exceptions.handle(request,
                               _('Unable to update security service.'),
                               redirect=redirect)
+
+
+class AddSecurityServiceForm(forms.SelfHandlingForm):
+    sec_service = forms.MultipleChoiceField(
+        label=_("Networks"),
+        required=True,
+        widget=forms.CheckboxSelectMultiple(),
+        error_messages={
+            'required': _(
+                "At least one security service"
+                " must be specified.")})
+
+    def __init__(self, request, *args, **kwargs):
+        super(AddSecurityServiceForm, self).__init__(
+            request, *args, **kwargs)
+        sec_services_choices = manila.security_service_list(request)
+        self.fields['sec_service'].choices = [(' ', ' ')] + \
+                                             [(choice.id, choice.name
+                                              or choice.id) for choice in
+                                              sec_services_choices]
+
+    def handle(self, request, data):
+        pass

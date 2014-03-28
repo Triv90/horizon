@@ -122,6 +122,10 @@ def share_network_create(request, neutron_net_id=None, neutron_subnet_id=None,
         name=name, description=description)
 
 
+def share_network_get(request, share_net_id):
+    return manilaclient(request).share_networks.get(share_net_id)
+
+
 def share_network_update(request, share_net_id, name=None, description=None):
     return manilaclient(request).share_networks.update(share_net_id,
         name=name, description=description)
@@ -175,6 +179,11 @@ def share_network_security_service_remove(request, share_network_id,
                                           security_service_id):
     return manilaclient(request).share_networks.remove_security_service(
         share_network_id, security_service_id)
+
+
+def share_network_security_service_list(request, share_network_id):
+    return manilaclient(request).security_services.list(
+        search_opts={'share_network_id': share_network_id})
 
 
 def tenant_quota_get(request, tenant_id):

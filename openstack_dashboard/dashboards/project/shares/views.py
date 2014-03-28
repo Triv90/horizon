@@ -23,7 +23,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.utils.datastructures import SortedDict
 from django.utils.translation import ugettext_lazy as _
 
-from horizon import exceptions
+from horizon import exceptions, workflows
 from horizon import forms
 from horizon import tables
 from horizon import tabs
@@ -40,6 +40,8 @@ from openstack_dashboard.dashboards.project.shares \
     import tables as project_tables
 from openstack_dashboard.dashboards.project.shares \
     import tabs as project_tabs
+from openstack_dashboard.dashboards.project.shares \
+    import workflows as project_workflows
 
 
 class ShareTableMixIn(object):
@@ -160,19 +162,67 @@ class UpdateView(forms.ModalFormView):
                 'description': share.display_description}
 
 
-class UpdateShareNetworkView(forms.ModalFormView):
+class UpdateShareNetworkView(workflows.WorkflowView):
+    workflow_class = project_workflows.UpdateShareNetworkWorkflow
     template_name = "project/shares/share_network_update.html"
-    form_class = project_forms.UpdateShareNetworkForm
-    success_url = 'horizon:admin:shares:index'
+    success_url = 'horizon:project:shares:index'
 
-    def get_success_url(self):
-        return reverse(self.success_url)
+    #def get_object(self):
+    #    if not hasattr(self, "_object"):
+    #        vol_id = self.kwargs['share_network_id']
+    #        try:
+    #            self._object = manila.share_network_get(self.request, vol_id)
+    #        except Exception:
+    #            msg = _('Unable to retrieve volume.')
+    #            url = reverse('horizon:project:shares:index')
+    #            exceptions.handle(self.request, msg, redirect=url)
+    #    return self._object
+
+    def get_initial(self):
+        return {'id': self.kwargs["share_network_id"]}
+
+    def get_context_data(self, **kwargs):
+        context = super(UpdateShareNetworkView, self).get_context_data(**kwargs)
+        context['id'] = self.kwargs['share_network_id']
+        return context
+#
+#
+#class UpdateShareNetworkView(forms.ModalFormView):
+#    template_name = "project/shares/share_network_update.html"
+#    form_class = project_forms.UpdateShareNetworkForm
+#    success_url = 'horizon:project:shares:index'
+#
+#    def get_success_url(self):
+#        return reverse(self.success_url)
+#
+#    def get_object(self):
+#        if not hasattr(self, "_object"):
+#            share_id = self.kwargs['share_network_id']
+#            try:
+#                self._object = manila.share_network_get(self.request, share_id)
+#            except Exception:
+#                msg = _('Unable to retrieve volume.')
+#                url = reverse('horizon:project:shares:index')
+#                exceptions.handle(self.request, msg, redirect=url)
+#        return self._object
+#
+#    def get_context_data(self, **kwargs):
+#        context = super(UpdateShareNetworkView,
+#                        self).get_context_data(**kwargs)
+#        context['share_network'] = self.get_object()
+#        return context
+#
+#    def get_initial(self):
+#        share_net = self.get_object()
+#        return {'share_net_id': self.kwargs["share_network_id"],
+#                'name': share_net.name,
+#                'description': share_net.description}
 
 
 class UpdateSecurityServiceView(forms.ModalFormView):
     template_name = "project/shares/share_network_update.html"
     form_class = project_forms.UpdateSecurityServiceForm
-    success_url = 'horizon:admin:shares:index'
+    success_url = 'horizon:project:shares:index'
 
     def get_success_url(self):
         return reverse(self.success_url)
@@ -194,3 +244,32 @@ class CreateShareNetworkView(forms.ModalFormView):
 
     def get_success_url(self):
         return reverse(self.success_url)
+
+
+class AddSecurityServiceView(forms.ModalFormView):
+    form_class = project_forms.AddSecurityServiceForm
+    template_name = 'project/shares/add_security_service.html'
+    success_url = 'horizon:project:shares:index'
+
+    def get_object(self):
+        if not hasattr(self, "_object"):
+            share_id = self.kwargs['share_network_id']
+            try:
+                self._object = manila.share_network_get(self.request, share_id)
+            except Exception:
+                msg = _('Unable to retrieve volume.')
+                url = reverse('horizon:project:shares:index')
+                exceptions.handle(self.request, msg, redirect=url)
+        return self._object
+
+    def get_context_data(self, **kwargs):
+        context = super(AddSecurityServiceView,
+                        self).get_context_data(**kwargs)
+        context['share_network'] = self.get_object()
+        return context
+
+    def get_initial(self):
+        share_net = self.get_object()
+        return {'share_net_id': self.kwargs["share_network_id"],
+                'name': share_net.name,
+                'description': share_net.description}

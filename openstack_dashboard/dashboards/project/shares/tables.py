@@ -216,6 +216,14 @@ class CreateShareNetwork(tables.LinkAction):
     #policy_rules = (("share", "volume_extension:types_manage"),)
 
 
+class AddSecurityService(tables.LinkAction):
+    name = "add_security_service"
+    verbose_name = _("Add Security Service")
+    url = "horizon:project:shares:add_security_service"
+    classes = ("ajax-modal", "btn-create")
+    #policy_rules = (("share", "volume_extension:types_manage"),)
+
+
 class DeleteShareNetwork(tables.DeleteAction):
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
@@ -266,14 +274,14 @@ class DeactivateShareNetwork(tables.BatchAction):
 class EditShareNetwork(tables.LinkAction):
     name = "edit"
     verbose_name = _("Edit Share Network")
-    url = "horizon:project:shares:share_network:update"
+    url = "horizon:project:shares:update_share_network"
     classes = ("ajax-modal", "btn-create")
 
 
 class EditSecurityService(tables.LinkAction):
     name = "edit"
     verbose_name = _("Edit Security Service")
-    url = "horizon:project:shares:security_service:update"
+    url = "horizon:project:shares:updatesecurity_service"
     classes = ("ajax-modal", "btn-create")
 
 
@@ -332,4 +340,5 @@ class ShareNetworkTable(tables.DataTable):
         table_actions = (CreateShareNetwork, DeleteShareNetwork)
         status_columns = ["status"]
         row_actions = (EditShareNetwork, DeleteShareNetwork,
-                       ActivateShareNetwork, DeactivateShareNetwork)
+                       ActivateShareNetwork, DeactivateShareNetwork,
+                       AddSecurityService)
