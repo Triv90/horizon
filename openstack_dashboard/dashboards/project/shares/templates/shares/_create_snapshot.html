@@ -21,9 +21,9 @@
 
 {% block modal-footer %}
   {% if attached %}
-    <input class="btn btn-primary btn-warning pull-right" type="submit" value="{% trans "Create Volume Snapshot (Force)" %}" />
+    <input class="btn btn-primary btn-warning pull-right" type="submit" value="{% trans "Create Share Snapshot (Force)" %}" />
   {% else %}
-    <input class="btn btn-primary pull-right" type="submit" value="{% trans "Create Volume Snapshot" %}" />
+    <input class="btn btn-primary pull-right" type="submit" value="{% trans "Create Share Snapshot" %}" />
   {% endif %}
   <a href="{% url 'horizon:project:shares:index' %}" class="btn secondary cancel close">{% trans "Cancel" %}</a>
 {% endblock %}
