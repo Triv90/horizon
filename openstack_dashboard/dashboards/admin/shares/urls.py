@@ -18,4 +18,7 @@ from openstack_dashboard.dashboards.admin.shares import views
 urlpatterns = patterns('',
     url(r'^$', views.IndexView.as_view(), name='index'),
     url(r'^(?P<share_id>[^/]+)/$', views.DetailView.as_view(), name='detail'),
+    url(r'^snapshots/(?P<snapshot_id>[^/]+)$',
+        views.SnapshotDetailView.as_view(),
+        name='snapshot-detail'),
 )

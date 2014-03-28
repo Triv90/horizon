@@ -10,12 +10,30 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from django.core.urlresolvers import reverse
+from django.template.defaultfilters import title  # noqa
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import tables
 from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.project.shares \
     import tables as project_tables
+
+DELETABLE_STATES = ("available", "error")
+
+
+def get_size(share):
+    return _("%sGB") % share.size
+
+
+class UpdateRow(tables.Row):
+    ajax = True
+
+    def get_data(self, request, share_id):
+        share = manila.share_get(request, share_id)
+        if not share.name:
+            share.name = share_id
+        return share
 
 
 class SharesFilterAction(tables.FilterAction):
@@ -42,6 +60,77 @@ class SharesTable(project_tables.SharesTable):
         table_actions = (project_tables.DeleteShare, SharesFilterAction)
         row_actions = (project_tables.DeleteShare,)
         columns = ('tenant', 'host', 'name', 'size', 'status', 'protocol',)
+
+
+class SnapshotShareNameColumn(tables.Column):
+    def get_link_url(self, snapshot):
+        return reverse(self.link, args=(snapshot.share_id,))
+
+
+class DeleteSnapshot(tables.DeleteAction):
+    data_type_singular = _("Snapshot")
+    data_type_plural = _("Snapshots")
+    action_past = _("Scheduled deletion of %(data_type)s")
+    policy_rules = (("snapshot", "snapshot:delete"),)
+
+    def get_policy_target(self, request, datum=None):
+        project_id = None
+        if datum:
+            project_id = getattr(datum, "project_id", None)
+        return {"project_id": project_id}
+
+    def delete(self, request, obj_id):
+        obj = self.table.get_object_by_id(obj_id)
+        name = self.table.get_object_display(obj)
+        try:
+            manila.share_snapshot_delete(request, obj_id)
+        except Exception:
+            msg = _('Unable to delete snapshot "%s". One or more shares '
+                    'depend on it.')
+            exceptions.check_message(["snapshots", "dependent"], msg % name)
+            raise
+
+    def allowed(self, request, snapshot=None):
+        if snapshot:
+            return snapshot.status in DELETABLE_STATES
+        return True
+
+
+class SnapshotsTable(tables.DataTable):
+    STATUS_CHOICES = (
+        ("in-use", True),
+        ("available", True),
+        ("creating", None),
+        ("error", False),
+    )
+    name = tables.Column("name",
+                         verbose_name=_("Name"),
+                         link="horizon:admin:shares:snapshot-detail")
+    description = tables.Column("description",
+                                verbose_name=_("Description"),
+                                truncate=40)
+    size = tables.Column(get_size,
+                         verbose_name=_("Size"),
+                         attrs={'data-type': 'size'})
+    status = tables.Column("status",
+                           filters=(title,),
+                           verbose_name=_("Status"),
+                           status=True,
+                           status_choices=STATUS_CHOICES)
+    source = SnapshotShareNameColumn("share_id",
+                                     verbose_name=_("Source"),
+                                     link="horizon:admin:shares:detail")
+
+    def get_object_display(self, obj):
+        return obj.name
+
+    class Meta:
+        name = "snapshots"
+        verbose_name = _("Snapshots")
+        status_columns = ["status"]
+        row_class = UpdateRow
+        table_actions = (DeleteSnapshot, )
+        row_actions = (DeleteSnapshot, )
 
 
 class DeleteSecurityService(tables.DeleteAction):
