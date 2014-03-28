@@ -20,15 +20,9 @@ from horizon import tabs
 
 from openstack_dashboard.api import keystone
 from openstack_dashboard.api import manila
-from openstack_dashboard.api import network
-from openstack_dashboard.api import nova
 
 from openstack_dashboard.dashboards.project.\
-    shares.tables import SharesTable
-from openstack_dashboard.dashboards.project.\
-    shares.tables import SecurityServiceTable
-from openstack_dashboard.dashboards.project.\
-    shares.tables import ShareNetworkTable
+    shares import tables as project_tables
 
 
 def set_tenant_name_to_objects(request, objects):
@@ -47,7 +41,7 @@ def set_tenant_name_to_objects(request, objects):
 
 
 class SharesTab(tabs.TableTab):
-    table_classes = (SharesTable, )
+    table_classes = (project_tables.SharesTable, )
     name = _("Shares")
     slug = "shares_tab"
     template_name = "horizon/common/_detail_table.html"
@@ -71,8 +65,31 @@ class SharesTab(tabs.TableTab):
         return shares
 
 
+class SnapshotsTab(tabs.TableTab):
+    table_classes = (project_tables.SnapshotsTable, )
+    name = _("Snapshots")
+    slug = "snapshots_tab"
+    template_name = "horizon/common/_detail_table.html"
+
+    def _set_id_if_nameless(self, snapshots):
+        for snap in snapshots:
+            if not snap.name:
+                snap.name = snap.id
+
+    def get_snapshots_data(self):
+        try:
+            snapshots = manila.share_snapshot_list(self.request)
+        except Exception:
+            exceptions.handle(self.request,
+                              _('Unable to retrieve share list.'))
+            return []
+        #Gather our tenants to correlate against IDs
+        set_tenant_name_to_objects(self.request, snapshots)
+        return snapshots
+
+
 class SecurityServiceTab(tabs.TableTab):
-    table_classes = (SecurityServiceTable,)
+    table_classes = (project_tables.SecurityServiceTable,)
     name = _("Security Services")
     slug = "security_services_tab"
     template_name = "horizon/common/_detail_table.html"
@@ -90,7 +107,7 @@ class SecurityServiceTab(tabs.TableTab):
 
 
 class ShareNetworkTab(tabs.TableTab):
-    table_classes = (ShareNetworkTable,)
+    table_classes = (project_tables.ShareNetworkTable,)
     name = _("Share Networks")
     slug = "share_networks_tab"
     template_name = "horizon/common/_detail_table.html"
@@ -109,7 +126,7 @@ class ShareNetworkTab(tabs.TableTab):
 
 class ShareTabs(tabs.TabGroup):
     slug = "share_tabs"
-    tabs = (SecurityServiceTab, ShareNetworkTab, SharesTab)
+    tabs = (SecurityServiceTab, ShareNetworkTab, SharesTab, SnapshotsTab)
     sticky = True
 
 

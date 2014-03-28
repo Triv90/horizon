@@ -3,10 +3,10 @@
 {% load url from future %}
 
 {% block form_id %}{% endblock %}
-{% block form_action %}{% url 'horizon:project:volumes:create_snapshot' volume_id %}{% endblock %}
+{% block form_action %}{% url 'horizon:project:shares:create_snapshot' share_id %}{% endblock %}
 
-{% block modal_id %}create_volume_snapshot_modal{% endblock %}
-{% block modal-header %}{% trans "Create Volume Snapshot" %}{% endblock %}
+{% block modal_id %}create_share_snapshot_modal{% endblock %}
+{% block modal-header %}{% trans "Create Share Snapshot" %}{% endblock %}
 
 {% block modal-body %}
   <div class="left">
@@ -15,7 +15,7 @@
     </fieldset>
   </div>
   <div class="right quota-dynamic">
-    {% include "project/volumes/_limits.html" with usages=usages snapshot_quota=True %}
+    {% include "project/shares/_limits.html" with usages=usages snapshot_quota=True %}
   </div>
 {% endblock %}
 
@@ -25,5 +25,5 @@
   {% else %}
     <input class="btn btn-primary pull-right" type="submit" value="{% trans "Create Volume Snapshot" %}" />
   {% endif %}
-  <a href="{% url 'horizon:project:volumes:index' %}" class="btn secondary cancel close">{% trans "Cancel" %}</a>
+  <a href="{% url 'horizon:project:shares:index' %}" class="btn secondary cancel close">{% trans "Cancel" %}</a>
 {% endblock %}

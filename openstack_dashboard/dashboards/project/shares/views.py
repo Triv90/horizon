@@ -167,17 +167,6 @@ class UpdateShareNetworkView(workflows.WorkflowView):
     template_name = "project/shares/share_network_update.html"
     success_url = 'horizon:project:shares:index'
 
-    #def get_object(self):
-    #    if not hasattr(self, "_object"):
-    #        vol_id = self.kwargs['share_network_id']
-    #        try:
-    #            self._object = manila.share_network_get(self.request, vol_id)
-    #        except Exception:
-    #            msg = _('Unable to retrieve volume.')
-    #            url = reverse('horizon:project:shares:index')
-    #            exceptions.handle(self.request, msg, redirect=url)
-    #    return self._object
-
     def get_initial(self):
         return {'id': self.kwargs["share_network_id"]}
 
@@ -185,38 +174,6 @@ class UpdateShareNetworkView(workflows.WorkflowView):
         context = super(UpdateShareNetworkView, self).get_context_data(**kwargs)
         context['id'] = self.kwargs['share_network_id']
         return context
-#
-#
-#class UpdateShareNetworkView(forms.ModalFormView):
-#    template_name = "project/shares/share_network_update.html"
-#    form_class = project_forms.UpdateShareNetworkForm
-#    success_url = 'horizon:project:shares:index'
-#
-#    def get_success_url(self):
-#        return reverse(self.success_url)
-#
-#    def get_object(self):
-#        if not hasattr(self, "_object"):
-#            share_id = self.kwargs['share_network_id']
-#            try:
-#                self._object = manila.share_network_get(self.request, share_id)
-#            except Exception:
-#                msg = _('Unable to retrieve volume.')
-#                url = reverse('horizon:project:shares:index')
-#                exceptions.handle(self.request, msg, redirect=url)
-#        return self._object
-#
-#    def get_context_data(self, **kwargs):
-#        context = super(UpdateShareNetworkView,
-#                        self).get_context_data(**kwargs)
-#        context['share_network'] = self.get_object()
-#        return context
-#
-#    def get_initial(self):
-#        share_net = self.get_object()
-#        return {'share_net_id': self.kwargs["share_network_id"],
-#                'name': share_net.name,
-#                'description': share_net.description}
 
 
 class UpdateSecurityServiceView(forms.ModalFormView):

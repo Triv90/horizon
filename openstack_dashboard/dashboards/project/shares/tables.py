@@ -17,8 +17,6 @@
 from django.core.urlresolvers import NoReverseMatch  # noqa
 from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title  # noqa
-from django.utils import html
-from django.utils import safestring
 from django.utils.translation import string_concat  # noqa
 from django.utils.translation import ugettext_lazy as _
 
@@ -26,9 +24,7 @@ from django.utils.translation import ugettext_lazy as _
 from horizon import exceptions
 from horizon import tables
 
-from openstack_dashboard import api
 from openstack_dashboard.api import manila
-from openstack_dashboard import policy
 from openstack_dashboard.usage import quotas
 
 
@@ -95,11 +91,40 @@ class CreateSnapshot(tables.LinkAction):
     def get_policy_target(self, request, datum=None):
         project_id = None
         if datum:
-            project_id = getattr(datum, "os-share-tenant-attr:tenant_id", None)
+            project_id = getattr(datum, "project_id", None)
         return {"project_id": project_id}
 
     def allowed(self, request, share=None):
         return share.status in ("available", "in-use")
+
+
+class DeleteSnapshot(tables.DeleteAction):
+    data_type_singular = _("Snapshot")
+    data_type_plural = _("Snapshots")
+    action_past = _("Scheduled deletion of %(data_type)s")
+    policy_rules = (("snapshot", "snapshot:delete"),)
+
+    def get_policy_target(self, request, datum=None):
+        project_id = None
+        if datum:
+            project_id = getattr(datum, "project_id", None)
+        return {"project_id": project_id}
+
+    def delete(self, request, obj_id):
+        obj = self.table.get_object_by_id(obj_id)
+        name = self.table.get_object_display(obj)
+        try:
+            manila.share_snapshot_delete(request, obj_id)
+        except Exception:
+            msg = _('Unable to delete snapshot "%s". One or more shares '
+                    'depend on it.')
+            exceptions.check_message(["snapshots", "dependent"], msg % name)
+            raise
+
+    def allowed(self, request, snapshot=None):
+        if snapshot:
+            return snapshot.status in DELETABLE_STATES
+        return True
 
 
 class EditShare(tables.LinkAction):
@@ -163,6 +188,43 @@ class SharesTableBase(tables.DataTable):
         return obj.name
 
 
+class SnapshotsTable(tables.DataTable):
+    STATUS_CHOICES = (
+        ("in-use", True),
+        ("available", True),
+        ("creating", None),
+        ("error", False),
+    )
+    name = tables.Column("name",
+                         verbose_name=_("Name"),
+                         link="horizon:project:shares:detail")
+    description = tables.Column("description",
+                                verbose_name=_("Description"),
+                                truncate=40)
+    size = tables.Column(get_size,
+                         verbose_name=_("Size"),
+                         attrs={'data-type': 'size'})
+    status = tables.Column("status",
+                           filters=(title,),
+                           verbose_name=_("Status"),
+                           status=True,
+                           status_choices=STATUS_CHOICES)
+    source = tables.Column("source",
+                           verbose_name=_("Source"),
+                           link="horizon:project:shares:detail")
+
+    def get_object_display(self, obj):
+        return obj.name
+
+    class Meta:
+        name = "snapshots"
+        verbose_name = _("Snapshots")
+        status_columns = ["status"]
+        row_class = UpdateRow
+        table_actions = (CreateSnapshot, DeleteSnapshot)
+        row_actions = (DeleteSnapshot, )
+
+
 class SharesFilterAction(tables.FilterAction):
 
     def filter(self, table, shares, filter_string):
@@ -179,8 +241,8 @@ class SharesTable(SharesTableBase):
     proto = tables.Column("share_proto",
                           verbose_name=_("Protocol"))
     share_network = tables.Column(get_share_network,
-                                verbose_name=_("Share Network"),
-                                empty_value="-")
+                                  verbose_name=_("Share Network"),
+                                  empty_value="-")
 
     class Meta:
         name = "shares"
@@ -202,7 +264,6 @@ class CreateSecurityService(tables.LinkAction):
 class DeleteSecurityService(tables.DeleteAction):
     data_type_singular = _("Security Service")
     data_type_plural = _("Security Services")
-    #policy_rules = (("volume", "volume_extension:types_manage"),)
 
     def delete(self, request, obj_id):
         manila.security_service_delete(request, obj_id)
@@ -213,7 +274,6 @@ class CreateShareNetwork(tables.LinkAction):
     verbose_name = _("Create Share Network")
     url = "horizon:project:shares:create_share_network"
     classes = ("ajax-modal", "btn-create")
-    #policy_rules = (("share", "volume_extension:types_manage"),)
 
 
 class AddSecurityService(tables.LinkAction):
@@ -221,13 +281,11 @@ class AddSecurityService(tables.LinkAction):
     verbose_name = _("Add Security Service")
     url = "horizon:project:shares:add_security_service"
     classes = ("ajax-modal", "btn-create")
-    #policy_rules = (("share", "volume_extension:types_manage"),)
 
 
 class DeleteShareNetwork(tables.DeleteAction):
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
-    #policy_rules = (("volume", "volume_extension:types_manage"),)
 
     def delete(self, request, obj_id):
         manila.share_network_delete(request, obj_id)
@@ -281,7 +339,7 @@ class EditShareNetwork(tables.LinkAction):
 class EditSecurityService(tables.LinkAction):
     name = "edit"
     verbose_name = _("Edit Security Service")
-    url = "horizon:project:shares:updatesecurity_service"
+    url = "horizon:project:shares:update_security_service"
     classes = ("ajax-modal", "btn-create")
 
 
@@ -339,6 +397,7 @@ class ShareNetworkTable(tables.DataTable):
         verbose_name = _("Share Networks")
         table_actions = (CreateShareNetwork, DeleteShareNetwork)
         status_columns = ["status"]
+        row_class = UpdateRow
         row_actions = (EditShareNetwork, DeleteShareNetwork,
                        ActivateShareNetwork, DeactivateShareNetwork,
                        AddSecurityService)
