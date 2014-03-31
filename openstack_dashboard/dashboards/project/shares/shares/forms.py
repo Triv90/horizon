@@ -1,6 +1,4 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2012 Nebula, Inc.
+# Copyright (c) 2014 NetApp, Inc.
 # All rights reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,13 +18,14 @@ Views for managing shares.
 """
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.forms import ValidationError  # noqa
 from django.template.defaultfilters import filesizeformat  # noqa
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext_lazy as _, ugettext_lazy
 from django.views.decorators.debug import sensitive_variables
 
-from horizon import exceptions
+from horizon import exceptions, forms, messages
 from horizon import forms
 from horizon import messages
 from horizon.utils import fields
@@ -34,7 +33,7 @@ from horizon.utils import functions
 from horizon.utils.memoized import memoized  # noqa
 
 from openstack_dashboard import api
-from openstack_dashboard.api import keystone
+from openstack_dashboard.api import keystone, manila
 from openstack_dashboard.api import manila
 from openstack_dashboard.api import neutron
 from openstack_dashboard.dashboards.project.instances import tables
@@ -186,44 +185,6 @@ class CreateForm(forms.SelfHandlingForm):
         return manila.share_snapshot_get(request, id)
 
 
-class CreateSnapshotForm(forms.SelfHandlingForm):
-    name = forms.CharField(max_length="255", label=_("Snapshot Name"))
-    description = forms.CharField(widget=forms.Textarea,
-            label=_("Description"), required=False)
-
-    def __init__(self, request, *args, **kwargs):
-        super(CreateSnapshotForm, self).__init__(request, *args, **kwargs)
-
-        # populate share_id
-        share_id = kwargs.get('initial', {}).get('share_id', [])
-        self.fields['share_id'] = forms.CharField(widget=forms.HiddenInput(),
-                                                  initial=share_id)
-
-    def handle(self, request, data):
-        try:
-            share = manila.share_get(request,
-                                       data['share_id'])
-            force = False
-            message = _('Creating share snapshot "%s".') % data['name']
-            if share.status == 'in-use':
-                force = True
-                message = _('Forcing to create snapshot "%s" '
-                            'from attached share.') % data['name']
-            snapshot = manila.share_snapshot_create(request,
-                                                     data['share_id'],
-                                                     data['name'],
-                                                     data['description'],
-                                                     force=force)
-
-            messages.info(request, message)
-            return snapshot
-        except Exception:
-            redirect = reverse("horizon:project:shares:index")
-            exceptions.handle(request,
-                              _('Unable to create share snapshot.'),
-                              redirect=redirect)
-
-
 class UpdateForm(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Share Name"))
     description = forms.CharField(widget=forms.Textarea,
@@ -243,152 +204,3 @@ class UpdateForm(forms.SelfHandlingForm):
             exceptions.handle(request,
                               _('Unable to update share.'),
                               redirect=redirect)
-
-
-class CreateSecurityService(forms.SelfHandlingForm):
-    name = forms.CharField(max_length="255", label=_("Name"))
-    dns_ip = forms.CharField(max_length="15", label=_("DNS IP"))
-    server = forms.CharField(max_length="255", label=_("Server"))
-    domain = forms.CharField(max_length="255", label=_("Domain"))
-    sid = forms.CharField(max_length="255", label=_("Sid"))
-    password = forms.CharField(
-        label=_("Password"),
-        widget=forms.PasswordInput(render_value=False))
-    confirm_password = forms.CharField(
-        label=_("Confirm Password"),
-        widget=forms.PasswordInput(render_value=False))
-    type = forms.ChoiceField(choices=(("", ""),
-                                      ("active_directory", "Active Directory"),
-                                      ("ldap", "LDAP"),
-                                      ("kerberos", "Kerberos")),
-                             label=_("Type"))
-    description = forms.CharField(widget=forms.Textarea,
-                                  label=_("Description"), required=False)
-
-    def clean(self):
-        '''Check to make sure password fields match.'''
-        data = super(forms.Form, self).clean()
-        if 'password' in data:
-            if data['password'] != data.get('confirm_password', None):
-                raise ValidationError(_('Passwords do not match.'))
-        return data
-
-    @sensitive_variables('data')
-    def handle(self, request, data):
-        try:
-            data.pop('confirm_password')
-            security_service = manila.security_service_create(
-                request, **data)
-            messages.success(request, _('Successfully created security service: %s')
-                                      % data['name'])
-            return security_service
-        except Exception:
-            exceptions.handle(request,
-                              _('Unable to create security service.'))
-            return False
-
-
-class CreateShareNetworkForm(forms.SelfHandlingForm):
-    name = forms.CharField(max_length="255", label=_("Name"))
-    neutron_net_id = forms.ChoiceField(choices=(), label=_("Neutron Net ID"))
-    neutron_subnet_id = forms.ChoiceField(choices=(),
-                                          label=_("Neutron Subnet ID"))
-    description = forms.CharField(widget=forms.Textarea,
-                                  label=_("Description"), required=False)
-
-    def __init__(self, request, *args, **kwargs):
-        super(CreateShareNetworkForm, self).__init__(
-            request, *args, **kwargs)
-        net_choices = neutron.network_list(request)
-        subnet_choices = neutron.subnet_list(request)
-        sec_services_choices = manila.security_service_list(
-            request, search_opts={'all_tenants': True})
-        self.fields['neutron_net_id'].choices = [(' ', ' ')] + \
-                                                [(choice.id, choice.name_or_id)
-                                                 for choice in net_choices]
-        self.fields['neutron_subnet_id'].choices = [(' ', ' ')] + \
-                                                   [(choice.id,
-                                                     choice.name_or_id) for
-                                                    choice in subnet_choices]
-        #self.fields['security_service'].choices = [(choice.id,
-        #                                             choice.name) for
-        #                                            choice in
-        #                                            sec_services_choices]
-
-    def handle(self, request, data):
-        try:
-            # Remove any new lines in the public key
-            share_network = manila.share_network_create(request, **data)
-            messages.success(request, _('Successfully created share network: %s')
-                                      % data['name'])
-            return share_network
-        except Exception:
-            exceptions.handle(request,
-                              _('Unable to create share network.'))
-            return False
-
-
-class UpdateShareNetworkForm(forms.SelfHandlingForm):
-    name = forms.CharField(max_length="255", label=_("Share Name"))
-    description = forms.CharField(widget=forms.Textarea,
-            label=_("Description"), required=False)
-
-    def handle(self, request, data, *args, **kwargs):
-        share_net_id = self.initial['share_network_id']
-        try:
-            manila.share_network_update(request, share_net_id,
-                                        name=data['name'],
-                                        description=data['description'])
-
-            message = _('Updating share network "%s"') % data['name']
-            messages.info(request, message)
-            return True
-        except Exception:
-            redirect = reverse("horizon:project:shares:index")
-            exceptions.handle(request,
-                              _('Unable to update share network.'),
-                              redirect=redirect)
-
-
-class UpdateSecurityServiceForm(forms.SelfHandlingForm):
-    name = forms.CharField(max_length="255", label=_("Share Name"))
-    description = forms.CharField(widget=forms.Textarea,
-            label=_("Description"), required=False)
-
-    def handle(self, request, data):
-        sec_service_id = self.initial['security_service_id']
-        try:
-            manila.security_service_update(request, sec_service_id, data['name'],
-                                 data['description'])
-
-            message = _('Updating security service "%s"') % data['name']
-            messages.info(request, message)
-            return True
-        except Exception:
-            redirect = reverse("horizon:project:shares:index")
-            exceptions.handle(request,
-                              _('Unable to update security service.'),
-                              redirect=redirect)
-
-
-class AddSecurityServiceForm(forms.SelfHandlingForm):
-    sec_service = forms.MultipleChoiceField(
-        label=_("Networks"),
-        required=True,
-        widget=forms.CheckboxSelectMultiple(),
-        error_messages={
-            'required': _(
-                "At least one security service"
-                " must be specified.")})
-
-    def __init__(self, request, *args, **kwargs):
-        super(AddSecurityServiceForm, self).__init__(
-            request, *args, **kwargs)
-        sec_services_choices = manila.security_service_list(request)
-        self.fields['sec_service'].choices = [(' ', ' ')] + \
-                                             [(choice.id, choice.name
-                                              or choice.id) for choice in
-                                              sec_services_choices]
-
-    def handle(self, request, data):
-        pass

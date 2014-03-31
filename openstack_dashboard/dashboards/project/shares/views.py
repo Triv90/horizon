@@ -20,239 +20,29 @@ Views for managing volumes.
 
 from django.core.urlresolvers import reverse
 from django.core.urlresolvers import reverse_lazy
-from django.utils.datastructures import SortedDict
 from django.utils.translation import ugettext_lazy as _
 
-from horizon import exceptions, workflows
-from horizon import forms
-from horizon import tables
 from horizon import tabs
-from horizon.utils import memoized
 
-from openstack_dashboard import api
-from openstack_dashboard.api import manila
-from openstack_dashboard.usage import quotas
-
-from openstack_dashboard.dashboards.project.shares \
-    import forms as project_forms
-
-from openstack_dashboard.dashboards.project.shares \
-    import tables as project_tables
-from openstack_dashboard.dashboards.project.shares \
-    import tabs as project_tabs
-from openstack_dashboard.dashboards.project.shares \
-    import workflows as project_workflows
+from openstack_dashboard.dashboards.project.shares.shares \
+    import tabs as shares_tabs
+from openstack_dashboard.dashboards.project.shares.security_services \
+    import tabs as security_services_tabs
+from openstack_dashboard.dashboards.project.shares.share_networks \
+    import tabs as share_networks_tabs
+from openstack_dashboard.dashboards.project.shares.snapshots \
+    import tabs as snapshots_tabs
 
 
-class ShareTableMixIn(object):
-    def _get_shares(self, search_opts=None):
-        try:
-            return manila.share_list(self.request, search_opts=search_opts)
-        except Exception:
-            exceptions.handle(self.request,
-                              _('Unable to retrieve share list.'))
-            return []
-
-    def _set_id_if_nameless(self, shares):
-        for share in shares:
-            # It is possible to create a volume with no name through the
-            # EC2 API, use the ID in those cases.
-            if not share.name:
-                share.name = share.id
+class ShareTabs(tabs.TabGroup):
+    slug = "share_tabs"
+    tabs = (security_services_tabs.SecurityServiceTab,
+            share_networks_tabs.ShareNetworkTab,
+            shares_tabs.SharesTab,
+            snapshots_tabs.SnapshotsTab)
+    sticky = True
 
 
 class IndexView(tabs.TabbedTableView):
-    tab_group_class = project_tabs.ShareTabs
+    tab_group_class = ShareTabs
     template_name = "admin/shares/index.html"
-
-
-class DetailView(tabs.TabView):
-    tab_group_class = project_tabs.ShareDetailTabs
-    template_name = 'project/shares/detail.html'
-
-    def get_context_data(self, **kwargs):
-        context = super(DetailView, self).get_context_data(**kwargs)
-        context["share"] = self.get_data()
-        return context
-
-    @memoized.memoized_method
-    def get_data(self):
-        try:
-            share_id = self.kwargs['share_id']
-            share = manila.share_get(self.request, share_id)
-        except Exception:
-            redirect = reverse('horizon:project:shares:index')
-            exceptions.handle(self.request,
-                              _('Unable to retrieve share details.'),
-                              redirect=redirect)
-        return share
-
-    def get_tabs(self, request, *args, **kwargs):
-        share = self.get_data()
-        return self.tab_group_class(request, share=share, **kwargs)
-
-
-class SnapshotDetailView(tabs.TabView):
-    tab_group_class = project_tabs.SnapshotDetailTabs
-    template_name = 'project/shares/snapshot_detail.html'
-
-    def get_context_data(self, **kwargs):
-        context = super(SnapshotDetailView, self).get_context_data(**kwargs)
-        context["snapshot"] = self.get_data()
-        return context
-
-    @memoized.memoized_method
-    def get_data(self):
-        try:
-            snapshot_id = self.kwargs['snapshot_id']
-            snapshot = manila.share_snapshot_get(self.request, snapshot_id)
-        except Exception:
-            redirect = reverse('horizon:project:shares:index')
-            exceptions.handle(self.request,
-                              _('Unable to retrieve snapshot details.'),
-                              redirect=redirect)
-        return snapshot
-
-    def get_tabs(self, request, *args, **kwargs):
-        snapshot = self.get_data()
-        return self.tab_group_class(request, snapshot=snapshot, **kwargs)
-
-
-class CreateView(forms.ModalFormView):
-    form_class = project_forms.CreateForm
-    template_name = 'project/shares/create.html'
-    success_url = reverse_lazy("horizon:project:shares:index")
-
-    def get_context_data(self, **kwargs):
-        context = super(CreateView, self).get_context_data(**kwargs)
-        try:
-            context['usages'] = quotas.tenant_limit_usages(self.request)
-        except Exception:
-            exceptions.handle(self.request)
-        return context
-
-
-class CreateSnapshotView(forms.ModalFormView):
-    form_class = project_forms.CreateSnapshotForm
-    template_name = 'project/shares/create_snapshot.html'
-    success_url = reverse_lazy("horizon:project:images_and_snapshots:index")
-
-    def get_context_data(self, **kwargs):
-        context = super(CreateSnapshotView, self).get_context_data(**kwargs)
-        context['share_id'] = self.kwargs['share_id']
-        try:
-            share = manila.share_get(self.request, context['share_id'])
-            if (share.status == 'in-use'):
-                context['attached'] = True
-                context['form'].set_warning(_("This share is currently "
-                                              "attached to an instance. "
-                                              "In some cases, creating a "
-                                              "snapshot from an attached "
-                                              "share can result in a "
-                                              "corrupted snapshot."))
-            context['usages'] = quotas.tenant_limit_usages(self.request)
-        except Exception:
-            exceptions.handle(self.request,
-                              _('Unable to retrieve share information.'))
-        return context
-
-    def get_initial(self):
-        return {'share_id': self.kwargs["share_id"]}
-
-
-class UpdateView(forms.ModalFormView):
-    form_class = project_forms.UpdateForm
-    template_name = 'project/shares/update.html'
-    success_url = reverse_lazy("horizon:project:shares:index")
-
-    def get_object(self):
-        if not hasattr(self, "_object"):
-            vol_id = self.kwargs['share_id']
-            try:
-                self._object = manila.share_get(self.request, vol_id)
-            except Exception:
-                msg = _('Unable to retrieve share.')
-                url = reverse('horizon:project:shares:index')
-                exceptions.handle(self.request, msg, redirect=url)
-        return self._object
-
-    def get_context_data(self, **kwargs):
-        context = super(UpdateView, self).get_context_data(**kwargs)
-        context['share'] = self.get_object()
-        return context
-
-    def get_initial(self):
-        share = self.get_object()
-        return {'share_id': self.kwargs["share_id"],
-                'name': share.name,
-                'description': share.description}
-
-
-class UpdateShareNetworkView(workflows.WorkflowView):
-    workflow_class = project_workflows.UpdateShareNetworkWorkflow
-    template_name = "project/shares/share_network_update.html"
-    success_url = 'horizon:project:shares:index'
-
-    def get_initial(self):
-        return {'id': self.kwargs["share_network_id"]}
-
-    def get_context_data(self, **kwargs):
-        context = super(UpdateShareNetworkView, self).get_context_data(**kwargs)
-        context['id'] = self.kwargs['share_network_id']
-        return context
-
-
-class UpdateSecurityServiceView(forms.ModalFormView):
-    template_name = "project/shares/share_network_update.html"
-    form_class = project_forms.UpdateSecurityServiceForm
-    success_url = 'horizon:project:shares:index'
-
-    def get_success_url(self):
-        return reverse(self.success_url)
-
-
-class CreateSecurityServiceView(forms.ModalFormView):
-    form_class = project_forms.CreateSecurityService
-    template_name = 'project/shares/create_security_service.html'
-    success_url = 'horizon:project:shares:index'
-
-    def get_success_url(self):
-        return reverse(self.success_url)
-
-
-class CreateShareNetworkView(forms.ModalFormView):
-    form_class = project_forms.CreateShareNetworkForm
-    template_name = 'project/shares/create_share_network.html'
-    success_url = 'horizon:project:shares:index'
-
-    def get_success_url(self):
-        return reverse(self.success_url)
-
-
-class AddSecurityServiceView(forms.ModalFormView):
-    form_class = project_forms.AddSecurityServiceForm
-    template_name = 'project/shares/add_security_service.html'
-    success_url = 'horizon:project:shares:index'
-
-    def get_object(self):
-        if not hasattr(self, "_object"):
-            share_id = self.kwargs['share_network_id']
-            try:
-                self._object = manila.share_network_get(self.request, share_id)
-            except Exception:
-                msg = _('Unable to retrieve volume.')
-                url = reverse('horizon:project:shares:index')
-                exceptions.handle(self.request, msg, redirect=url)
-        return self._object
-
-    def get_context_data(self, **kwargs):
-        context = super(AddSecurityServiceView,
-                        self).get_context_data(**kwargs)
-        context['share_network'] = self.get_object()
-        return context
-
-    def get_initial(self):
-        share_net = self.get_object()
-        return {'share_net_id': self.kwargs["share_network_id"],
-                'name': share_net.name,
-                'description': share_net.description}

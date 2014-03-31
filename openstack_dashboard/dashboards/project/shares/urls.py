@@ -17,37 +17,44 @@
 from django.conf.urls import patterns  # noqa
 from django.conf.urls import url  # noqa
 
-from openstack_dashboard.dashboards.project.shares import views
+from openstack_dashboard.dashboards.project.shares import views 
+from openstack_dashboard.dashboards.project.shares.security_services \
+    import views as security_services_views
+from openstack_dashboard.dashboards.project.shares.share_networks \
+    import views as share_networks_views
+from openstack_dashboard.dashboards.project.shares.shares \
+    import views as shares_views
+from openstack_dashboard.dashboards.project.shares.snapshots\
+    import views as snapshot_views
+
 
 
 urlpatterns = patterns('openstack_dashboard.dashboards.project.shares.views',
     url(r'^$', views.IndexView.as_view(), name='index'),
-    url(r'^create/$', views.CreateView.as_view(), name='create'),
+    url(r'^create/$', shares_views.CreateView.as_view(), name='create'),
     url(r'^create_security_service$',
-        views.CreateSecurityServiceView.as_view(),
+        security_services_views.CreateView.as_view(),
         name='create_security_service'),
     url(r'^create_share_network$',
-        views.CreateShareNetworkView.as_view(),
+        share_networks_views.Create.as_view(),
         name='create_share_network'),
     url(r'^share_network/(?P<share_network_id>[^/]+)/update$',
-        views.UpdateShareNetworkView.as_view(),
+        share_networks_views.Update.as_view(),
         name='update_share_network'),
     url(r'^/security_service/(?P<sec_service_id>[^/]+)/update/$',
-        views.UpdateSecurityServiceView.as_view(),
+        security_services_views.UpdateView.as_view(),
         name='update_security_service'),
     url(r'^snapshots/(?P<snapshot_id>[^/]+)$',
-        views.SnapshotDetailView.as_view(),
+        snapshot_views.SnapshotDetailView.as_view(),
         name='snapshot-detail'),
-    url(r'^/share-network/(?P<share_network_id>[^/]+)/add_security_service/$',
-        views.AddSecurityServiceView.as_view(), name='add_security_service'),
     url(r'^(?P<share_id>[^/]+)/create_snapshot/$',
-        views.CreateSnapshotView.as_view(),
+        snapshot_views.CreateSnapshotView.as_view(),
         name='create_snapshot'),
     url(r'^(?P<share_id>[^/]+)/$',
-        views.DetailView.as_view(),
+        shares_views.DetailView.as_view(),
         name='detail'),
     url(r'^(?P<share_id>[^/]+)/update/$',
-        views.UpdateView.as_view(),
+        shares_views.UpdateView.as_view(),
         name='update'),
 
 )

@@ -46,21 +46,6 @@ class UpdateShareNetworkInfoAction(workflows.Action):
     def clean(self):
         cleaned_data = super(UpdateShareNetworkInfoAction, self).clean()
         name = cleaned_data.get('name')
-
-        #try:
-        #    aggregates = api.nova.aggregate_details_list(self.request)
-        #except Exception:
-        #    msg = _('Unable to get host aggregate list')
-        #    exceptions.check_message(["Connection", "refused"], msg)
-        #    raise
-        #if aggregates is not None:
-        #    for aggregate in aggregates:
-        #        if aggregate.name.lower() == name.lower():
-        #            raise forms.ValidationError(
-        #                _('The name "%s" is already used by '
-        #                  'another host aggregate.')
-        #                % name
-        #            )
         return cleaned_data
 
 

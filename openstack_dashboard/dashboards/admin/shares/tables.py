@@ -14,26 +14,19 @@ from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title  # noqa
 from django.utils.translation import ugettext_lazy as _
 
+from horizon import exceptions
 from horizon import tables
 from openstack_dashboard.api import manila
-from openstack_dashboard.dashboards.project.shares \
-    import tables as project_tables
+from openstack_dashboard.dashboards.project.shares.shares \
+    import tables as shares_tables
+from openstack_dashboard.dashboards.project.shares.snapshots \
+    import tables as snapshot_tables
 
 DELETABLE_STATES = ("available", "error")
 
 
 def get_size(share):
     return _("%sGB") % share.size
-
-
-class UpdateRow(tables.Row):
-    ajax = True
-
-    def get_data(self, request, share_id):
-        share = manila.share_get(request, share_id)
-        if not share.name:
-            share.name = share_id
-        return share
 
 
 class SharesFilterAction(tables.FilterAction):
@@ -45,7 +38,7 @@ class SharesFilterAction(tables.FilterAction):
                 if q in share.name.lower()]
 
 
-class SharesTable(project_tables.SharesTable):
+class SharesTable(shares_tables.SharesTable):
     name = tables.Column("name",
                          verbose_name=_("Name"),
                          link="horizon:admin:shares:detail")
@@ -56,9 +49,9 @@ class SharesTable(project_tables.SharesTable):
         name = "shares"
         verbose_name = _("Shares")
         status_columns = ["status"]
-        row_class = project_tables.UpdateRow
-        table_actions = (project_tables.DeleteShare, SharesFilterAction)
-        row_actions = (project_tables.DeleteShare,)
+        row_class = shares_tables.UpdateRow
+        table_actions = (shares_tables.DeleteShare, SharesFilterAction)
+        row_actions = (shares_tables.DeleteShare,)
         columns = ('tenant', 'host', 'name', 'size', 'status', 'protocol',)
 
 
@@ -128,7 +121,7 @@ class SnapshotsTable(tables.DataTable):
         name = "snapshots"
         verbose_name = _("Snapshots")
         status_columns = ["status"]
-        row_class = UpdateRow
+        row_class = snapshot_tables.UpdateRow
         table_actions = (DeleteSnapshot, )
         row_actions = (DeleteSnapshot, )
 
