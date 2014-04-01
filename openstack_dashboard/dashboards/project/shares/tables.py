@@ -327,9 +327,6 @@ class ActivateShareNetwork(tables.BatchAction):
     def action(self, request, obj_id):
         manila.share_network_activate(request, obj_id)
 
-    def get_success_url(self, request):
-        return reverse('horizon:project:shares:index')
-
     def allowed(self, request, share=None):
         usages = quotas.tenant_quota_usages(request)
         if usages['share_networks']['available'] <= 0:
