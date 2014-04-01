@@ -103,7 +103,7 @@ class CreateSnapshot(tables.LinkAction):
                 self.verbose_name = string_concat(self.verbose_name, ' ',
                                                   _("(Quota exceeded)"))
         else:
-            self.verbose_name = _("Create Share")
+            self.verbose_name = _("Create Snapshot")
             classes = [c for c in self.classes if c != "disabled"]
             self.classes = classes
         return share.status in ("available", "in-use")
