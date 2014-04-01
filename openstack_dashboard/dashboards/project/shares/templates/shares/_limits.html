@@ -2,7 +2,7 @@
 
 <h3>{% trans "Description" %}:</h3>
 
-<p>{% trans "Shares are block devices that can be attached to instances." %}</p>
+<p>{% trans "Share Snapshots are used for storing share changes and creating shares. " %}</p>
 
 <h3>{% trans "Share Limits" %}</h3>
 
@@ -11,15 +11,15 @@
   <p>{{ usages.maxTotalShareGigabytes|quota:_("GB")|intcomma }}</p>
 </div>
 
-<div id="quota_size" data-progress-indicator-for="id_size" data-quota-limit="{{ usages.maxTotalShareGigabytes }}" data-quota-used="{{ usages.gigabytesUsed }}" class="quota_bar">
+<div id="quota_size" data-progress-indicator-for="id_size" data-quota-limit="{{ usages.maxTotalShareGigabytes }}" data-quota-used="{{ usages.totalGigabytesUsed }}" class="quota_bar">
 </div>
 
 <div class="quota_title clearfix">
-  <strong>{% trans "Number of Shares" %} <span>({{ usages.sharesUsed|intcomma }})</span></strong>
-  <p>{{ usages.maxTotalShares|quota|intcomma }}</p>
+  <strong>{% trans "Number of Share Snapshots" %} <span>({{ usages.totalSnapshotsUsed|intcomma }})</span></strong>
+  <p>{{ usages.maxTotalSnapshots|quota|intcomma }}</p>
 </div>
 
-<div id="quota_shares" data-progress-indicator-step-by="1" data-quota-limit="{{ usages.maxTotalShares}}" data-quota-used="{{ usages.sharesUsed }}" class="quota_bar">
+<div id="quota_snapshots" data-progress-indicator-step-by="1" data-quota-limit="{{ usages.maxTotalSnapshots}}" data-quota-used="{{ usages.totalSnapshotsUsed }}" class="quota_bar">
 </div>
 
 
