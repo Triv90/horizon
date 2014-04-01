@@ -109,7 +109,7 @@ class AddSecurityServiceAction(workflows.MembershipAction):
 class AddSecurityServiceStep(workflows.UpdateMembersStep):
     action_class = AddSecurityServiceAction
     help_text = _("Add security services to share netwrok.")
-    available_list_title = _("All available security services")
+    available_list_title = _("Available security services")
     members_list_title = _("Selected security services")
     no_available_text = _("No security services found.")
     no_members_text = _("No security services selected.")
