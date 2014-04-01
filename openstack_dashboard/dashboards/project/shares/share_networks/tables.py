@@ -14,7 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from django.core.urlresolvers import NoReverseMatch, reverse  # noqa
+from django.core.urlresolvers import NoReverseMatch  # noqa
 from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title  # noqa
 from django.utils import safestring
@@ -26,7 +26,6 @@ from horizon import exceptions
 from horizon import tables
 
 from openstack_dashboard.api import manila
-from openstack_dashboard.dashboards.project.shares.shares.tables import UpdateRow
 from openstack_dashboard.usage import quotas
 
 
@@ -109,6 +108,16 @@ class EditShareNetwork(tables.LinkAction):
     def allowed(self, request, obj_id):
         sn = manila.share_network_get(request, obj_id)
         return sn.status == "INACTIVE"
+
+
+class UpdateRow(tables.Row):
+    ajax = True
+
+    def get_data(self, request, share_net_id):
+        share_net = manila.share_network_get(request, share_net_id)
+        if not share_net.name:
+            share_net.name = share_net_id
+        return share_net
 
 
 class ShareNetworkTable(tables.DataTable):
