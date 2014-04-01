@@ -150,6 +150,12 @@ class DeleteShareNetwork(tables.DeleteAction):
     def delete(self, request, obj_id):
         manila.share_network_delete(request, obj_id)
 
+    def allowed(self, request, share=None):
+        sn = manila.share_network_get(request, obj_id)
+        if sn.status in ["INACTIVE", "ERROR"]:
+            return True
+        return False
+
 
 class SecurityServiceTable(tables.DataTable):
     name = tables.Column("name",
@@ -171,6 +177,25 @@ class SecurityServiceTable(tables.DataTable):
         verbose_name = _("Security Services")
         table_actions = (DeleteSecurityService,)
         row_actions = (DeleteSecurityService,)
+
+
+class DeactivateShareNetwork(tables.BatchAction):
+    name = "deactivate"
+    action_present = _("Deactivate")
+    action_past = _("Deactivating")
+    data_type_singular = _("Share Network")
+    data_type_plural = _("Share Networks")
+    verbose_name = _("Activate Share Network")
+
+    def action(self, request, obj_id):
+        manila.share_network_deactivate(request, obj_id)
+
+    def allowed(self, request, share=None):
+        shares = manila.share_list(request,
+                                   search_opts={'share_network_id': share.id})
+        if shares:
+            return False
+        return share.status == "ACTIVE"
 
 
 class ShareNetworkTable(tables.DataTable):
@@ -198,4 +223,4 @@ class ShareNetworkTable(tables.DataTable):
         name = "share_networks"
         verbose_name = _("Share Networks")
         table_actions = (DeleteShareNetwork, )
-        row_actions = (DeleteShareNetwork, )
+        row_actions = (DeleteShareNetwork, DeactivateShareNetwork, )
