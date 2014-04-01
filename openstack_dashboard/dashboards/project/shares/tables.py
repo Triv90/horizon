@@ -298,6 +298,10 @@ class AddSecurityService(tables.LinkAction):
     url = "horizon:project:shares:add_security_service"
     classes = ("ajax-modal", "btn-create")
 
+    def allowed(self, request, obj_id):
+        sn = manila.share_network_get(request, obj_id)
+        return sn.status == "INACTIVE"
+
 
 class DeleteShareNetwork(tables.DeleteAction):
     data_type_singular = _("Share Network")
@@ -305,6 +309,10 @@ class DeleteShareNetwork(tables.DeleteAction):
 
     def delete(self, request, obj_id):
         manila.share_network_delete(request, obj_id)
+
+    def allowed(self, request, obj_id):
+        sn = manila.share_network_get(request, obj_id)
+        return sn.status == "INACTIVE"
 
 
 class ActivateShareNetwork(tables.BatchAction):
@@ -364,6 +372,10 @@ class EditShareNetwork(tables.LinkAction):
     verbose_name = _("Edit Share Network")
     url = "horizon:project:shares:update_share_network"
     classes = ("ajax-modal", "btn-create")
+
+    def allowed(self, request, obj_id):
+        sn = manila.share_network_get(request, obj_id)
+        return sn.status == "INACTIVE"
 
 
 class EditSecurityService(tables.LinkAction):
