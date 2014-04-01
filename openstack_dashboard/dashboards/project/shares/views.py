@@ -15,21 +15,18 @@
 #    under the License.
 
 """
-Views for managing volumes.
+Views for managing shares.
 """
 
-from django.core.urlresolvers import reverse
-from django.core.urlresolvers import reverse_lazy
-from django.utils.translation import ugettext_lazy as _
 
 from horizon import tabs
 
-from openstack_dashboard.dashboards.project.shares.shares \
-    import tabs as shares_tabs
 from openstack_dashboard.dashboards.project.shares.security_services \
     import tabs as security_services_tabs
 from openstack_dashboard.dashboards.project.shares.share_networks \
     import tabs as share_networks_tabs
+from openstack_dashboard.dashboards.project.shares.shares \
+    import tabs as shares_tabs
 from openstack_dashboard.dashboards.project.shares.snapshots \
     import tabs as snapshots_tabs
 

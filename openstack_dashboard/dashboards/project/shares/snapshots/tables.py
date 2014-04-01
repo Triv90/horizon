@@ -17,12 +17,10 @@
 from django.core.urlresolvers import NoReverseMatch  # noqa
 from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title  # noqa
-from django.utils import safestring
 from django.utils.translation import string_concat, ugettext_lazy  # noqa
 from django.utils.translation import ugettext_lazy as _
-from django.utils import html
 
-from horizon import exceptions, tables
+from horizon import exceptions
 from horizon import tables
 
 from openstack_dashboard.api import manila

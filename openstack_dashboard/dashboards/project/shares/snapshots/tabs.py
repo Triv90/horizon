@@ -13,22 +13,18 @@
 
 from django.utils.translation import ugettext_lazy as _
 
-from horizon import exceptions, tabs
-from horizon import messages
+from horizon import exceptions
 from horizon import tabs
 
-from openstack_dashboard.api import keystone, manila
 from openstack_dashboard.api import manila
 
-from openstack_dashboard.dashboards.project.shares.security_services.tables import SecurityServiceTable
-from openstack_dashboard.dashboards.project.shares.share_networks.tables import ShareNetworkTable
-from openstack_dashboard.dashboards.project.shares.shares.tables import SharesTable
-from openstack_dashboard.dashboards.project.shares.snapshots.tables import SnapshotsTable
-from openstack_dashboard.dashboards.project.shares.utils import set_tenant_name_to_objects
+from openstack_dashboard.dashboards.project.shares.snapshots \
+    import tables as snapshot_tables
+from openstack_dashboard.dashboards.project.shares import utils
 
 
 class SnapshotsTab(tabs.TableTab):
-    table_classes = (SnapshotsTable, )
+    table_classes = (snapshot_tables.SnapshotsTable, )
     name = _("Snapshots")
     slug = "snapshots_tab"
     template_name = "horizon/common/_detail_table.html"
@@ -46,7 +42,7 @@ class SnapshotsTab(tabs.TableTab):
                               _('Unable to retrieve share list.'))
             return []
         #Gather our tenants to correlate against IDs
-        set_tenant_name_to_objects(self.request, snapshots)
+        utils.set_tenant_name_to_objects(self.request, snapshots)
         return snapshots
 
 

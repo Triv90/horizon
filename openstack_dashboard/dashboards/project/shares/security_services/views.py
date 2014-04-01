@@ -19,12 +19,10 @@ Views for managing volumes.
 """
 
 from django.core.urlresolvers import reverse
-from django.core.urlresolvers import reverse_lazy
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
 from horizon import forms
-from horizon import tabs
 
 from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.project.shares.security_services import\

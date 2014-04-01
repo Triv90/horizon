@@ -17,12 +17,9 @@
 from django.core.urlresolvers import NoReverseMatch  # noqa
 from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title  # noqa
-from django.utils import safestring
-from django.utils.translation import string_concat, ugettext_lazy  # noqa
+from django.utils.translation import string_concat  # noqa
 from django.utils.translation import ugettext_lazy as _
-from django.utils import html
 
-from horizon import exceptions
 from horizon import tables
 
 from openstack_dashboard.api import manila
@@ -115,8 +112,8 @@ class UpdateRow(tables.Row):
 
     def get_data(self, request, share_net_id):
         share_net = manila.share_network_get(request, share_net_id)
-        if not share_net_id.name:
-            share_net_id.name = share_net_id
+        if not share_net.name:
+            share_net.name = share_net_id
         return share_net
 
 

@@ -17,27 +17,19 @@
 Views for managing shares.
 """
 
-from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.forms import ValidationError  # noqa
 from django.template.defaultfilters import filesizeformat  # noqa
-from django.utils.translation import ugettext_lazy as _, ugettext_lazy
-from django.views.decorators.debug import sensitive_variables
+from django.utils.translation import ugettext_lazy as _
 
-from horizon import exceptions, forms, messages
+from horizon import exceptions
 from horizon import forms
 from horizon import messages
 from horizon.utils import fields
-from horizon.utils import functions
 from horizon.utils.memoized import memoized  # noqa
 
-from openstack_dashboard import api
-from openstack_dashboard.api import keystone, manila
 from openstack_dashboard.api import manila
-from openstack_dashboard.api import neutron
-from openstack_dashboard.dashboards.project.instances import tables
-from openstack_dashboard.usage import quotas
+#from openstack_dashboard.usage import quotas
 
 
 class CreateForm(forms.SelfHandlingForm):
@@ -123,7 +115,7 @@ class CreateForm(forms.SelfHandlingForm):
 
     def handle(self, request, data):
         try:
-            usages = quotas.tenant_limit_usages(self.request)
+            #usages = quotas.tenant_limit_usages(self.request)
             #availableGB = usages['maxTotalShareGigabytes'] - \
             #    usages['gigabytesUsed']
             #availableVol = usages['maxTotalShares'] - usages['sharesUsed']
@@ -131,7 +123,6 @@ class CreateForm(forms.SelfHandlingForm):
             snapshot_id = None
             source_type = data.get('share_source_type', None)
             share_network = data.get('share_network', None)
-            az = data.get('availability_zone', None) or None
             if (data.get("snapshot_source", None) and
                   source_type in [None, 'snapshot_source']):
                 # Create from Snapshot
@@ -142,7 +133,6 @@ class CreateForm(forms.SelfHandlingForm):
                     error_message = _('The share size cannot be less than '
                         'the snapshot size (%sGB)') % snapshot.size
                     raise ValidationError(error_message)
-                az = None
             else:
                 if type(data['size']) is str:
                     data['size'] = int(data['size'])
@@ -155,7 +145,8 @@ class CreateForm(forms.SelfHandlingForm):
             #              'avail': availableGB}
             #    raise ValidationError(error_message % params)
             #elif availableVol <= 0:
-            #    error_message = _('You are already using all of your available'
+            #    error_message = _('You are already using all of your '
+            #                      'available'
             #                      ' shares.')
             #    raise ValidationError(error_message)
 

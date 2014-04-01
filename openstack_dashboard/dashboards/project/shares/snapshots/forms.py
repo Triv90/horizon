@@ -17,27 +17,16 @@
 Views for managing shares.
 """
 
-from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.forms import ValidationError  # noqa
 from django.template.defaultfilters import filesizeformat  # noqa
-from django.utils.translation import ugettext_lazy as _, ugettext_lazy
-from django.views.decorators.debug import sensitive_variables
 
-from horizon import exceptions, forms, messages
+from horizon import exceptions
 from horizon import forms
 from horizon import messages
-from horizon.utils import fields
-from horizon.utils import functions
 from horizon.utils.memoized import memoized  # noqa
 
-from openstack_dashboard import api
-from openstack_dashboard.api import keystone, manila
 from openstack_dashboard.api import manila
-from openstack_dashboard.api import neutron
-from openstack_dashboard.dashboards.project.instances import tables
-from openstack_dashboard.usage import quotas
 
 
 class CreateSnapshotForm(forms.SelfHandlingForm):

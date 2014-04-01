@@ -15,18 +15,15 @@
 #    under the License.
 
 from django.core.urlresolvers import NoReverseMatch  # noqa
-from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title  # noqa
-from django.utils import safestring
 from django.utils.translation import string_concat, ugettext_lazy  # noqa
 from django.utils.translation import ugettext_lazy as _
-from django.utils import html
-
-from horizon import exceptions, tables
+from horizon import exceptions
 from horizon import tables
 
 from openstack_dashboard.api import manila
-from openstack_dashboard.dashboards.project.shares.snapshots.tables import CreateSnapshot
+from openstack_dashboard.dashboards.project.shares.snapshots \
+    import tables as snapshot_tables
 from openstack_dashboard.usage import quotas
 
 
@@ -169,4 +166,4 @@ class SharesTable(SharesTableBase):
         status_columns = ["status"]
         row_class = UpdateRow
         table_actions = (CreateShare, DeleteShare, SharesFilterAction)
-        row_actions = (EditShare, CreateSnapshot, DeleteShare)
+        row_actions = (EditShare, snapshot_tables.CreateSnapshot, DeleteShare)

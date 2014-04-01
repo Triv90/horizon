@@ -17,7 +17,6 @@
 from django.conf.urls import patterns  # noqa
 from django.conf.urls import url  # noqa
 
-from openstack_dashboard.dashboards.project.shares import views 
 from openstack_dashboard.dashboards.project.shares.security_services \
     import views as security_services_views
 from openstack_dashboard.dashboards.project.shares.share_networks \
@@ -26,7 +25,7 @@ from openstack_dashboard.dashboards.project.shares.shares \
     import views as shares_views
 from openstack_dashboard.dashboards.project.shares.snapshots\
     import views as snapshot_views
-
+from openstack_dashboard.dashboards.project.shares import views
 
 
 urlpatterns = patterns('openstack_dashboard.dashboards.project.shares.views',
