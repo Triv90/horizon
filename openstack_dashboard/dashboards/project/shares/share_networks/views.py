@@ -19,10 +19,7 @@ Views for managing volumes.
 """
 
 from django.core.urlresolvers import reverse
-from django.core.urlresolvers import reverse_lazy
-from django.utils.translation import ugettext_lazy as _
 from horizon import forms
-from horizon import tabs
 from horizon import workflows
 from openstack_dashboard.dashboards.project.shares.share_networks import forms\
     as share_net_forms

@@ -17,9 +17,7 @@ from horizon import exceptions
 from horizon import forms
 from horizon import workflows
 
-from openstack_dashboard import api
 from openstack_dashboard.api import manila
-from openstack_dashboard.dashboards.admin.aggregates import constants
 
 
 class UpdateShareNetworkInfoAction(workflows.Action):
@@ -45,7 +43,6 @@ class UpdateShareNetworkInfoAction(workflows.Action):
 
     def clean(self):
         cleaned_data = super(UpdateShareNetworkInfoAction, self).clean()
-        name = cleaned_data.get('name')
         return cleaned_data
 
 

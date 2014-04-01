@@ -30,12 +30,13 @@ from horizon.utils import memoized
 from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.project.shares.snapshots import forms \
     as snapshot_forms
-from openstack_dashboard.dashboards.project.shares.snapshots.tabs import SnapshotDetailTabs
+from openstack_dashboard.dashboards.project.shares.snapshots\
+    import tabs as snapshot_tabs
 from openstack_dashboard.usage import quotas
 
 
 class SnapshotDetailView(tabs.TabView):
-    tab_group_class = SnapshotDetailTabs
+    tab_group_class = snapshot_tabs.SnapshotDetailTabs
     template_name = 'project/shares/snapshot_detail.html'
 
     def get_context_data(self, **kwargs):

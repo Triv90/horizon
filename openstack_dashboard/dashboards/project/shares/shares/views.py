@@ -30,7 +30,8 @@ from horizon.utils import memoized
 from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.project.shares.shares import forms \
     as share_form
-from openstack_dashboard.dashboards.project.shares.shares.tabs import ShareDetailTabs
+from openstack_dashboard.dashboards.project.shares.shares \
+    import tabs as shares_tabs
 from openstack_dashboard.usage import quotas
 
 
@@ -52,7 +53,7 @@ class ShareTableMixIn(object):
 
 
 class DetailView(tabs.TabView):
-    tab_group_class = ShareDetailTabs
+    tab_group_class = shares_tabs.ShareDetailTabs
     template_name = 'project/shares/detail.html'
 
     def get_context_data(self, **kwargs):

@@ -17,27 +17,18 @@
 Views for managing shares.
 """
 
-from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.forms import ValidationError  # noqa
 from django.template.defaultfilters import filesizeformat  # noqa
-from django.utils.translation import ugettext_lazy as _, ugettext_lazy
+from django.utils.translation import ugettext_lazy as _
 from django.views.decorators.debug import sensitive_variables
 
-from horizon import exceptions, forms, messages
+from horizon import exceptions
 from horizon import forms
 from horizon import messages
-from horizon.utils import fields
-from horizon.utils import functions
 from horizon.utils.memoized import memoized  # noqa
 
-from openstack_dashboard import api
-from openstack_dashboard.api import keystone, manila
 from openstack_dashboard.api import manila
-from openstack_dashboard.api import neutron
-from openstack_dashboard.dashboards.project.instances import tables
-from openstack_dashboard.usage import quotas
 
 
 class Create(forms.SelfHandlingForm):
@@ -74,7 +65,8 @@ class Create(forms.SelfHandlingForm):
             data.pop('confirm_password')
             security_service = manila.security_service_create(
                 request, **data)
-            messages.success(request, _('Successfully created security service: %s')
+            messages.success(request, _('Successfully created security '
+                                        'service: %s')
                                       % data['name'])
             return security_service
         except Exception:
@@ -91,8 +83,9 @@ class Update(forms.SelfHandlingForm):
     def handle(self, request, data):
         sec_service_id = self.initial['security_service_id']
         try:
-            manila.security_service_update(request, sec_service_id, data['name'],
-                                 data['description'])
+            manila.security_service_update(request, sec_service_id,
+                                           data['name'],
+                                           data['description'])
 
             message = _('Updating security service "%s"') % data['name']
             messages.info(request, message)

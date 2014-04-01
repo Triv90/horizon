@@ -25,7 +25,6 @@ from __future__ import absolute_import
 import logging
 
 from django.conf import settings
-from django.utils.translation import ugettext_lazy as _
 
 from manilaclient.v1 import client as manila_client
 from manilaclient.v1.contrib import list_extensions as manila_list_extensions

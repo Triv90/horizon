@@ -49,8 +49,9 @@ class CreateSecurityService(forms.SelfHandlingForm):
             # Remove any new lines in the public key
             security_service = manila.security_service_create(
                 request, **data)
-            messages.success(request, _('Successfully created security service: %s')
-                                      % data['name'])
+            messages.success(request,
+                             _('Successfully created security service: %s')
+                             % data['name'])
             return security_service
         except Exception:
             exceptions.handle(request,
@@ -75,8 +76,6 @@ class CreateShareNetworkForm(forms.SelfHandlingForm):
             request, *args, **kwargs)
         net_choices = neutron.network_list(request)
         subnet_choices = neutron.subnet_list(request)
-        sec_services_choices = manila.security_service_list(
-            request, search_opts={'all_tenants': True})
         self.fields['neutron_net_id'].choices = [(' ', ' ')] + \
                                                 [(choice.id, choice.name_or_id)
                                                  for choice in net_choices]
@@ -84,10 +83,6 @@ class CreateShareNetworkForm(forms.SelfHandlingForm):
                                                    [(choice.id,
                                                      choice.name_or_id) for
                                                     choice in subnet_choices]
-        #self.fields['security_service'].choices = [(choice.id,
-        #                                             choice.name) for
-        #                                            choice in
-        #                                            sec_services_choices]
         tenants, has_more = keystone.tenant_list(request)
         self.fields['project'].choices = [(' ', ' ')] + \
                                                    [(choice.id,
@@ -98,14 +93,11 @@ class CreateShareNetworkForm(forms.SelfHandlingForm):
         try:
             # Remove any new lines in the public key
             share_network = manila.share_network_create(request, **data)
-            messages.success(request, _('Successfully created share network: %s')
-                                      % data['name'])
+            messages.success(request,
+                             _('Successfully created share network: %s')
+                             % data['name'])
             return share_network
         except Exception:
             exceptions.handle(request,
                               _('Unable to create share network.'))
             return False
-
-
-class UpdateShareNetworkForm(forms.SelfHandlingForm):
-    pass

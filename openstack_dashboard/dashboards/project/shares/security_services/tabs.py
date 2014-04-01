@@ -13,22 +13,18 @@
 
 from django.utils.translation import ugettext_lazy as _
 
-from horizon import exceptions, tabs
-from horizon import messages
+from horizon import exceptions
 from horizon import tabs
 
-from openstack_dashboard.api import keystone, manila
 from openstack_dashboard.api import manila
 
-from openstack_dashboard.dashboards.project.shares.security_services.tables import SecurityServiceTable
-from openstack_dashboard.dashboards.project.shares.share_networks.tables import ShareNetworkTable
-from openstack_dashboard.dashboards.project.shares.shares.tables import SharesTable
-from openstack_dashboard.dashboards.project.shares.snapshots.tables import SnapshotsTable
-from openstack_dashboard.dashboards.project.shares.utils import set_tenant_name_to_objects
+from openstack_dashboard.dashboards.project.shares.security_services \
+    import tables as security_services_tables
+from openstack_dashboard.dashboards.project.shares import utils
 
 
 class SecurityServiceTab(tabs.TableTab):
-    table_classes = (SecurityServiceTable,)
+    table_classes = (security_services_tables.SecurityServiceTable,)
     name = _("Security Services")
     slug = "security_services_tab"
     template_name = "horizon/common/_detail_table.html"
@@ -41,5 +37,5 @@ class SecurityServiceTab(tabs.TableTab):
             exceptions.handle(self.request,
                               _("Unable to retrieve security services"))
 
-        set_tenant_name_to_objects(self.request, security_services)
+        utils.set_tenant_name_to_objects(self.request, security_services)
         return security_services

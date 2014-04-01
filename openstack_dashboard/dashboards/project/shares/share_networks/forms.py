@@ -17,27 +17,18 @@
 Views for managing shares.
 """
 
-from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.forms import ValidationError  # noqa
 from django.template.defaultfilters import filesizeformat  # noqa
-from django.utils.translation import ugettext_lazy as _, ugettext_lazy
-from django.views.decorators.debug import sensitive_variables
+from django.utils.translation import ugettext_lazy as _
 
-from horizon import exceptions, forms, messages
+from horizon import exceptions
 from horizon import forms
 from horizon import messages
-from horizon.utils import fields
-from horizon.utils import functions
 from horizon.utils.memoized import memoized  # noqa
 
-from openstack_dashboard import api
-from openstack_dashboard.api import keystone, manila, neutron
 from openstack_dashboard.api import manila
 from openstack_dashboard.api import neutron
-from openstack_dashboard.dashboards.project.instances import tables
-from openstack_dashboard.usage import quotas
 
 
 class Create(forms.SelfHandlingForm):
@@ -53,8 +44,6 @@ class Create(forms.SelfHandlingForm):
             request, *args, **kwargs)
         net_choices = neutron.network_list(request)
         subnet_choices = neutron.subnet_list(request)
-        sec_services_choices = manila.security_service_list(
-            request, search_opts={'all_tenants': True})
         self.fields['neutron_net_id'].choices = [(' ', ' ')] + \
                                                 [(choice.id, choice.name_or_id)
                                                  for choice in net_choices]
@@ -62,17 +51,13 @@ class Create(forms.SelfHandlingForm):
                                                    [(choice.id,
                                                      choice.name_or_id) for
                                                     choice in subnet_choices]
-        #self.fields['security_service'].choices = [(choice.id,
-        #                                             choice.name) for
-        #                                            choice in
-        #                                            sec_services_choices]
 
     def handle(self, request, data):
         try:
             # Remove any new lines in the public key
             share_network = manila.share_network_create(request, **data)
-            messages.success(request, _('Successfully created share network: %s')
-                                      % data['name'])
+            messages.success(request, _('Successfully created share'
+                                        ' network: %s') % data['name'])
             return share_network
         except Exception:
             exceptions.handle(request,
