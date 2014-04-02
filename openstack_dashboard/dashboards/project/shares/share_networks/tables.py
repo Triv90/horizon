@@ -26,7 +26,8 @@ from openstack_dashboard.api import manila
 from openstack_dashboard.usage import quotas
 
 
-DELETABLE_STATES = ("available", "error")
+DELETABLE_STATES = ("INACTIVE", "ERROR")
+EDITABLE_STATES = ("INACTIVE", )
 
 
 class Create(tables.LinkAction):
@@ -43,9 +44,10 @@ class Delete(tables.DeleteAction):
     def delete(self, request, obj_id):
         manila.share_network_delete(request, obj_id)
 
-    def allowed(self, request, obj_id):
-        sn = manila.share_network_get(request, obj_id)
-        return sn.status == "INACTIVE"
+    def allowed(self, request, obj=None):
+        if obj:
+            return obj.status in DELETABLE_STATES
+        return True
 
 
 class Activate(tables.BatchAction):
@@ -104,7 +106,7 @@ class EditShareNetwork(tables.LinkAction):
 
     def allowed(self, request, obj_id):
         sn = manila.share_network_get(request, obj_id)
-        return sn.status == "INACTIVE"
+        return sn.status in EDITABLE_STATES
 
 
 class UpdateRow(tables.Row):
