@@ -42,4 +42,4 @@ class ShareTabs(tabs.TabGroup):
 
 class IndexView(tabs.TabbedTableView):
     tab_group_class = ShareTabs
-    template_name = "admin/shares/index.html"
+    template_name = "project/shares/index.html"
