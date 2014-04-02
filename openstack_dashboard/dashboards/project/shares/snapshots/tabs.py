@@ -38,8 +38,8 @@ class SnapshotsTab(tabs.TableTab):
         try:
             snapshots = manila.share_snapshot_list(self.request)
         except Exception:
-            exceptions.handle(self.request,
-                              _('Unable to retrieve share list.'))
+            msg = _("Unable to retrieve share snapshots list.")
+            exceptions.handle(self.request, msg)
             return []
         #Gather our tenants to correlate against IDs
         utils.set_tenant_name_to_objects(self.request, snapshots)
