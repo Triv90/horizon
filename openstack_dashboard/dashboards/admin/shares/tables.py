@@ -143,11 +143,10 @@ class DeleteShareNetwork(tables.DeleteAction):
     def delete(self, request, obj_id):
         manila.share_network_delete(request, obj_id)
 
-    def allowed(self, request, obj_id):
-        sn = manila.share_network_get(request, obj_id)
-        if sn.status in ["INACTIVE", "ERROR"]:
-            return True
-        return False
+    def allowed(self, request, obj):
+        if obj:
+            return obj.status in ["INACTIVE", "ERROR"]
+        return True
 
 
 class SecurityServiceTable(tables.DataTable):
