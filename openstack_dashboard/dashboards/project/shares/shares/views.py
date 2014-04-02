@@ -24,12 +24,15 @@ from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
 from horizon import forms
+from horizon import tables
 from horizon import tabs
 from horizon.utils import memoized
 
 from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.project.shares.shares import forms \
     as share_form
+from openstack_dashboard.dashboards.project.shares.shares \
+    import tables as shares_tables
 from openstack_dashboard.dashboards.project.shares.shares \
     import tabs as shares_tabs
 from openstack_dashboard.usage import quotas
@@ -118,3 +121,25 @@ class UpdateView(forms.ModalFormView):
         return {'share_id': self.kwargs["share_id"],
                 'name': share.name,
                 'description': share.description}
+
+
+class ManageRulesView(tables.DataTableView):
+    table_class = shares_tables.RulesTable
+    template_name = 'project/shares/manage_rules.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(ManageRulesView, self).get_context_data(**kwargs)
+        context["share"] = self.get_data()
+        return context
+
+    @memoized.memoized_method
+    def get_data(self):
+        try:
+            share_id = self.kwargs['share_id']
+            rules = manila.share_rules_list(self.request, share_id)
+        except Exception:
+            redirect = reverse('horizon:project:shares:index')
+            exceptions.handle(self.request,
+                              _('Unable to retrieve share rules.'),
+                              redirect=redirect)
+        return rules

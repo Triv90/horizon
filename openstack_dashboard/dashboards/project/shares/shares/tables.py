@@ -150,6 +150,28 @@ class SharesFilterAction(tables.FilterAction):
                 if q in share.name.lower()]
 
 
+class ManageRules(tables.LinkAction):
+    name = "manage_rules"
+    verbose_name = _("Manage Rules")
+    url = "horizon:project:shares:manage_rules"
+    classes = ("btn-edit")
+    #policy_rules = (("share", "share:update"),)
+
+
+class RulesTable(tables.DataTable):
+    type = tables.Column("type", verbose_name=_("Type"))
+    access = tables.Column("access_to", verbose_name=_("Access to"))
+    status = tables.Column("status", verbose_name=_("Status"))
+
+    class Meta:
+        name = "rules"
+        verbose_name = _("Rules")
+        status_columns = ["status"]
+        row_class = UpdateRow
+        #table_actions = (CreateShare, DeleteShare, SharesFilterAction)
+        #row_actions = (EditShare, snapshot_tables.CreateSnapshot, DeleteShare)
+
+
 class SharesTable(SharesTableBase):
     name = tables.Column("name",
                          verbose_name=_("Name"),
@@ -166,4 +188,5 @@ class SharesTable(SharesTableBase):
         status_columns = ["status"]
         row_class = UpdateRow
         table_actions = (CreateShare, DeleteShare, SharesFilterAction)
-        row_actions = (EditShare, snapshot_tables.CreateSnapshot, DeleteShare)
+        row_actions = (EditShare, snapshot_tables.CreateSnapshot, DeleteShare,
+                       ManageRules)

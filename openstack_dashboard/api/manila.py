@@ -91,6 +91,18 @@ def share_update(request, share_id, name, description):
     return manilaclient(request).shares.update(share_id, **share_data)
 
 
+def share_rules_list(request, share_id):
+    return manilaclient(request).shares.access_list(share_id)
+
+
+def share_allow(request, share_id, access_type, access):
+    return manilaclient(request).shares.allow(share_id, access_type, access)
+
+
+def share_deny(request, share_id, rule_id):
+    return manilaclient(request).shares.deny(share_id, rule_id)
+
+
 def share_snapshot_get(request, snapshot_id):
     return manilaclient(request).share_snapshots.get(snapshot_id)
 
