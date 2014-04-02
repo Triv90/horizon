@@ -245,7 +245,9 @@ def tenant_quota_usages(request):
         shares = manila.share_list(request)
         snapshots = manila.share_snapshot_list(request)
         sn_l = manila.share_network_list(request)
-        usages.tally('gigabytes', sum([int(v.size) for v in shares]))
+        gig_s = sum([int(v.size) for v in shares])
+        gig_ss = sum([int(v.size) for v in snapshots])
+        usages.tally('gigabytes', gig_s + gig_ss)
         usages.tally('shares', len(shares))
         usages.tally('snapshots', len(snapshots))
         sn_u = sum([1 if v.status == "ACTIVE" else 0 for v in sn_l])
@@ -287,16 +289,18 @@ def tenant_limit_usages(request):
             msg = _("Unable to retrieve volume limit information.")
             exceptions.handle(request, msg)
 
-#    if base.is_service_enabled(request, 'share'):
-#        try:
-#            limits.update(manila.tenant_absolute_limits(request))
-#            shares = manila.share_list(request)
-#            total_size = sum([getattr(share, 'size', 0) for share
-#                              in shares])
-#            limits['gigabytesUsed'] = total_size
-#            limits['sharesUsed'] = len(shares)
-#        except Exception:
-#            msg = _("Unable to retrieve share limit information.")
-#            exceptions.handle(request, msg)
+    if base.is_service_enabled(request, 'share'):
+        try:
+            limits.update(manila.tenant_absolute_limits(request))
+            shares = manila.share_list(request)
+            snapshots = manila.share_snapshot_list(request)
+            total_s_size = sum([getattr(share, 'size', 0) for share in shares])
+            total_ss_size = sum([getattr(ss, 'size', 0) for ss in snapshots])
+            limits['totalGigabytesUsed'] = total_s_size + total_ss_size
+            limits['totalSharesUsed'] = len(shares)
+            limits['totalSnapshotsUsed'] = len(snapshots)
+        except Exception:
+            msg = _("Unable to retrieve share limit information.")
+            exceptions.handle(request, msg)
 
     return limits
