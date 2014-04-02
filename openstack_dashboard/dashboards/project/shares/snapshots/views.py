@@ -64,7 +64,7 @@ class SnapshotDetailView(tabs.TabView):
 class CreateSnapshotView(forms.ModalFormView):
     form_class = snapshot_forms.CreateSnapshotForm
     template_name = 'project/shares/create_snapshot.html'
-    success_url = reverse_lazy("horizon:project:images_and_snapshots:index")
+    success_url = reverse_lazy("horizon:project:shares:index")
 
     def get_context_data(self, **kwargs):
         context = super(CreateSnapshotView, self).get_context_data(**kwargs)
