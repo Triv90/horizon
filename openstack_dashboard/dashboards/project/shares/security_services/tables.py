@@ -23,7 +23,7 @@ class Create(tables.LinkAction):
     verbose_name = _("Create Security Service")
     url = "horizon:project:shares:create_security_service"
     classes = ("ajax-modal", "btn-create")
-    policy_rules = (("share", "volume_extension:types_manage"),)
+    policy_rules = (("share", "security_service:create"),)
 
 
 class Delete(tables.DeleteAction):
