@@ -58,21 +58,6 @@ class OverviewTab(tabs.Tab):
         return {"share": self.tab_group.kwargs['share']}
 
 
-class ManageRulesTab(tabs.TableTab):
-    name = _("Manage Rules")
-    slug = "manage_rules"
-    template_name = "project/shares/shares/_manage_rules.html"
-    table_classes = (share_tables.RulesTable, )
-
-    def get_context_data(self, request):
-        return {"share_id": self.tab_group.kwargs['share_id']}
-
-
 class ShareDetailTabs(tabs.TabGroup):
     slug = "share_details"
     tabs = (OverviewTab,)
-
-
-class ManageRulesTabs(tabs.TabGroup):
-    slug = "manage_rules"
-    tabs = (ManageRulesTab, )
