@@ -14,7 +14,7 @@
 
 from horizon import exceptions
 from openstack_dashboard.api import keystone
-from openstack_dashboard.openstack.common.gettextutils import _
+from openstack_dashboard.openstack.common.gettextutils import _  # noqa
 
 
 def set_tenant_name_to_objects(request, objects):
