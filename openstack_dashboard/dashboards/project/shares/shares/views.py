@@ -123,6 +123,37 @@ class UpdateView(forms.ModalFormView):
                 'description': share.description}
 
 
+class AddRuleView(forms.ModalFormView):
+    form_class = share_form.AddRule
+    template_name = 'project/shares/rule_add.html'
+
+    def get_object(self):
+        if not hasattr(self, "_object"):
+            vol_id = self.kwargs['share_id']
+            try:
+                self._object = manila.share_get(self.request, vol_id)
+            except Exception:
+                msg = _('Unable to retrieve volume.')
+                url = reverse('horizon:project:shares:index')
+                exceptions.handle(self.request, msg, redirect=url)
+        return self._object
+
+    def get_context_data(self, **kwargs):
+        context = super(AddRuleView, self).get_context_data(**kwargs)
+        context['share'] = self.get_object()
+        return context
+
+    def get_initial(self):
+        share = self.get_object()
+        return {'share_id': self.kwargs["share_id"],
+                'name': share.name,
+                'description': share.description}
+
+    def get_success_url(self):
+        return reverse("horizon:project:shares:manage_rules",
+                       args=[self.kwargs['share_id']])
+
+
 class ManageRulesView(tables.DataTableView):
     table_class = shares_tables.RulesTable
     template_name = 'project/shares/manage_rules.html'

@@ -15,6 +15,7 @@
 #    under the License.
 
 from django.core.urlresolvers import NoReverseMatch  # noqa
+from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title  # noqa
 from django.utils.translation import string_concat, ugettext_lazy  # noqa
 from django.utils.translation import ugettext_lazy as _
@@ -154,22 +155,62 @@ class ManageRules(tables.LinkAction):
     name = "manage_rules"
     verbose_name = _("Manage Rules")
     url = "horizon:project:shares:manage_rules"
-    classes = ("btn-edit")
+    classes = ("btn-edit", )
     #policy_rules = (("share", "share:update"),)
 
 
+class AddRule(tables.LinkAction):
+    name = "rule_add"
+    verbose_name = _("Add rule")
+    url = 'horizon:project:shares:rule_add'
+    classes = ("ajax-modal", "btn-create")
+    #policy_rules = (("share", "share:create"),)
+
+    def allowed(self, request, share=None):
+        share = manila.share_get(request, self.table.kwargs['share_id'])
+        return share.status in ("available", "in-use")
+
+    def get_link_url(self):
+        return reverse(self.url, args=[self.table.kwargs['share_id']])
+
+
+class DeleteRule(tables.DeleteAction):
+    data_type_singular = _("Rule")
+    data_type_plural = _("Rules")
+    action_past = _("Scheduled deletion of %(data_type)s")
+    #policy_rules = (("share", "share:delete"),)
+
+    def delete(self, request, obj_id):
+        obj = self.table.get_object_by_id(obj_id)
+        name = self.table.get_object_display(obj)
+        try:
+            manila.share_deny(request, self.table.kwargs['share_id'], obj_id)
+        except Exception:
+            msg = _('Unable to delete rule "%s".')
+            exceptions.handle(request, msg)
+#
+#
+#class UpdateRuleRow(UpdateRow):
+#
+#    def get_data(self, request, rule_id):
+#        share = manila.share_rules_list(request, search_opts={'id': rule_id})
+#        if not share.name:
+#            share.name = share_id
+#        return share
+
+
 class RulesTable(tables.DataTable):
-    type = tables.Column("type", verbose_name=_("Type"))
+    type = tables.Column("access_type", verbose_name=_("Type"))
     access = tables.Column("access_to", verbose_name=_("Access to"))
-    status = tables.Column("status", verbose_name=_("Status"))
+    status = tables.Column("state", verbose_name=_("Status"))
 
     class Meta:
         name = "rules"
         verbose_name = _("Rules")
         status_columns = ["status"]
-        row_class = UpdateRow
-        #table_actions = (CreateShare, DeleteShare, SharesFilterAction)
-        #row_actions = (EditShare, snapshot_tables.CreateSnapshot, DeleteShare)
+        #row_class = UpdateRuleRow
+        table_actions = (DeleteRule, AddRule)
+        row_actions = (DeleteRule, )
 
 
 class SharesTable(SharesTableBase):

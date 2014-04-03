@@ -195,3 +195,22 @@ class UpdateForm(forms.SelfHandlingForm):
             exceptions.handle(request,
                               _('Unable to update share.'),
                               redirect=redirect)
+
+
+class AddRule(forms.SelfHandlingForm):
+    access_to = forms.CharField(label=_("Access To"), max_length="255",
+                                required=True)
+    type = forms.ChoiceField(label=_("Type"),
+                             required=True,
+                             choices=(('ip', 'ip'), ('sid', 'sid')))
+
+    def handle(self, request, data):
+        share_id = self.initial['share_id']
+        try:
+            manila.share_allow(request, share_id, access=data['access_to'],
+                               access_type=data['type'])
+        except Exception:
+            redirect = reverse("horizon:project:shares:index")
+            exceptions.handle(request,
+                              _('Unable to add rule.'),
+                              redirect=redirect)
