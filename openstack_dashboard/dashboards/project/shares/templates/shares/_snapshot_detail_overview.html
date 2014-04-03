@@ -32,14 +32,3 @@
     <dd>{{ snapshot.created_at|parse_date }}</dd>
   </dl>
 </div>
-
-<div class="status row-fluid detail">
-  <h4>{% trans "Metadata" %}</h4>
-  <hr class="header_rule">
-  <dl>
-  {% for key, value in snapshot.metadata.items %}
-    <dt>{{ key }}</dt>
-    <dd>{{ value }}</dd>
-  {% endfor %}
-  </dl>
-</div>
