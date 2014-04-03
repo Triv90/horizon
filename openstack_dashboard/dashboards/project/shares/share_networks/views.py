@@ -86,5 +86,5 @@ class Detail(tabs.TabView):
 
     def get_tabs(self, request, *args, **kwargs):
         share_network = self.get_data()
-        return self.tab_group_class(request, share_network=share_network, **kwargs)
-
+        return self.tab_group_class(request, share_network=share_network,
+                                    **kwargs)

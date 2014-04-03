@@ -37,3 +37,17 @@ class SecurityServiceTab(tabs.TableTab):
                               _("Unable to retrieve security services"))
 
         return security_services
+
+
+class OverviewTab(tabs.Tab):
+    name = _("Overview")
+    slug = "overview"
+    template_name = ("project/shares/security_services/_detail_overview.html")
+
+    def get_context_data(self, request):
+        return {"sec_service": self.tab_group.kwargs['sec_service']}
+
+
+class SecurityServiceDetailTabs(tabs.TabGroup):
+    slug = "security_service_details"
+    tabs = (OverviewTab,)

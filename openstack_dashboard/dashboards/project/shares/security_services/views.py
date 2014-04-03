@@ -23,12 +23,15 @@ from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
 from horizon import forms
+from horizon import tabs
 
 from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.project.shares.security_services import\
     forms as sec_services_forms
 from openstack_dashboard.dashboards.project.shares.share_networks import forms\
     as share_net_forms
+from openstack_dashboard.dashboards.project.shares.security_services \
+    import tabs as security_services_tabs
 
 
 class UpdateView(forms.ModalFormView):
@@ -76,3 +79,30 @@ class AddSecurityServiceView(forms.ModalFormView):
         return {'share_net_id': self.kwargs["share_network_id"],
                 'name': share_net.name,
                 'description': share_net.description}
+
+
+class Detail(tabs.TabView):
+    tab_group_class = security_services_tabs.SecurityServiceDetailTabs
+    template_name = 'project/shares/security_services/detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(Detail, self).get_context_data(**kwargs)
+        context["sec_service"] = self.get_data()
+        return context
+
+    def get_data(self):
+        try:
+            sec_service_id = self.kwargs['sec_service_id']
+            sec_service = manila.security_service_get(
+                self.request, sec_service_id)
+        except Exception:
+            redirect = reverse('horizon:project:shares:index')
+            exceptions.handle(
+                self.request,
+                _('Unable to retrieve security service details.'),
+                redirect=redirect)
+        return sec_service
+
+    def get_tabs(self, request, *args, **kwargs):
+        sec_service = self.get_data()
+        return self.tab_group_class(request, sec_service=sec_service, **kwargs)
