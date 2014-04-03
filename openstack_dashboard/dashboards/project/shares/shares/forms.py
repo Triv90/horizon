@@ -61,8 +61,8 @@ class CreateForm(forms.SelfHandlingForm):
         self.fields['type'].choices = [(type, type)
                                        for type in share_types]
         self.fields['share_network'].choices = \
-            [("", "")] + [(net.id, net.id) for net in share_networks if
-                          net.status == "ACTIVE"]
+            [("", "")] + [(net.id, net.name or net.id) for net in
+                          share_networks if net.status == "ACTIVE"]
 
         if "snapshot_id" in request.GET:
             try:
