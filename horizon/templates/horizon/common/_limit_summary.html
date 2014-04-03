@@ -60,9 +60,9 @@
     </div>
 
     <div class="d3_quota_bar">
-      <div class="d3_pie_chart_usage" data-used="{% widthratio usage.limits.totalGigabytesUsed usage.limits.maxTotalShareGigabytes 100 %}"></div>
+      <div class="d3_pie_chart_usage" data-used="{% widthratio usage.limits.totalShareGigabytesUsed usage.limits.maxTotalShareGigabytes 100 %}"></div>
       <strong>{% trans "Share Storage" %} <br />
-        {% blocktrans with used=usage.limits.totalGigabytesUsed|diskgbformat available=usage.limits.maxTotalShareGigabytes|quotainf|diskgbformat %}Used <span> {{ used }} </span> of <span> {{ available  }} </span>{% endblocktrans %}
+        {% blocktrans with used=usage.limits.totalShareGigabytesUsed|diskgbformat available=usage.limits.maxTotalShareGigabytes|quotainf|diskgbformat %}Used <span> {{ used }} </span> of <span> {{ available  }} </span>{% endblocktrans %}
       </strong>
     </div>
 
