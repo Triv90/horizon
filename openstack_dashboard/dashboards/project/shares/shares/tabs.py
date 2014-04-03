@@ -36,8 +36,16 @@ class SharesTab(tabs.TableTab):
                 share.name = share.id
 
     def get_shares_data(self):
+        share_nets_names = {}
+        share_nets = manila.share_network_list(self.request)
+        for share_net in share_nets:
+            share_nets_names[share_net.id] = share_net.name
         try:
             shares = manila.share_list(self.request)
+            for share in shares:
+                share.share_network = \
+                    share_nets_names.get(share.share_network_id) or \
+                    share.share_network_id
         except Exception:
             exceptions.handle(self.request,
                               _('Unable to retrieve share list.'))

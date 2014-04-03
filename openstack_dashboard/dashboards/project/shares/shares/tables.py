@@ -112,10 +112,6 @@ def get_size(share):
     return _("%sGB") % share.size
 
 
-def get_share_network(share):
-    return share.share_network_id if share.share_network_id != "None" else None
-
-
 class SharesTableBase(tables.DataTable):
     STATUS_CHOICES = (
         ("in-use", True),
@@ -213,13 +209,17 @@ class RulesTable(tables.DataTable):
         row_actions = (DeleteRule, )
 
 
+def get_share_network(share):
+    return share.share_network_name if share.share_network_name != "None" else None
+
+
 class SharesTable(SharesTableBase):
     name = tables.Column("name",
                          verbose_name=_("Name"),
                          link="horizon:project:shares:detail")
     proto = tables.Column("share_proto",
                           verbose_name=_("Protocol"))
-    share_network = tables.Column(get_share_network,
+    share_network = tables.Column("share_network",
                                   verbose_name=_("Share Network"),
                                   empty_value="-")
 
