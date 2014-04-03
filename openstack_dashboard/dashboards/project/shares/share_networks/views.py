@@ -19,10 +19,17 @@ Views for managing volumes.
 """
 
 from django.core.urlresolvers import reverse
+from django.utils.translation import ugettext_lazy as _
+from horizon import exceptions
 from horizon import forms
+from horizon import tabs
 from horizon import workflows
+from openstack_dashboard.api import manila
+from openstack_dashboard.api import neutron
 from openstack_dashboard.dashboards.project.shares.share_networks import forms\
     as share_net_forms
+from openstack_dashboard.dashboards.project.shares.share_networks import tabs\
+    as share_net_tabs
 from openstack_dashboard.dashboards.project.shares.share_networks \
     import workflows as share_net_workflows
 
@@ -48,3 +55,36 @@ class Create(forms.ModalFormView):
 
     def get_success_url(self):
         return reverse(self.success_url)
+
+
+class Detail(tabs.TabView):
+    tab_group_class = share_net_tabs.ShareNetworkDetailTabs
+    template_name = 'project/shares/share_networks/detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(Detail, self).get_context_data(**kwargs)
+        context["share_network"] = self.get_data()
+        return context
+
+    def get_data(self):
+        try:
+            share_net_id = self.kwargs['share_network_id']
+            share_net = manila.share_network_get(self.request, share_net_id)
+            share_net.neutron_net = neutron.network_get(
+                self.request, share_net.neutron_net_id)
+            share_net.neutron_subnet = neutron.subnet_get(
+                self.request, share_net.neutron_subnet_id)
+            share_net.sec_services = \
+                manila.share_network_security_service_list(self.request,
+                                                           share_net_id)
+        except Exception:
+            redirect = reverse('horizon:project:shares:index')
+            exceptions.handle(self.request,
+                              _('Unable to retrieve share network details.'),
+                              redirect=redirect)
+        return share_net
+
+    def get_tabs(self, request, *args, **kwargs):
+        share_network = self.get_data()
+        return self.tab_group_class(request, share_network=share_network, **kwargs)
+

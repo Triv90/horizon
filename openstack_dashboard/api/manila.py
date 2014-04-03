@@ -159,6 +159,11 @@ def security_service_list(request, search_opts=None):
         search_opts=search_opts)
 
 
+def security_service_get(request, search_opts=None):
+    return manilaclient(request).security_services.get(detailed=True,
+        search_opts=search_opts)
+
+
 def security_service_create(request, type, dns_ip=None, server=None,
                             domain=None, sid=None, password=None, name=None,
                             description=None):

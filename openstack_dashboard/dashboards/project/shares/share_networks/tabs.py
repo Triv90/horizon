@@ -47,3 +47,17 @@ class ShareNetworkTab(tabs.TableTab):
             exceptions.handle(self.request,
                               _("Unable to retrieve share networks"))
         return share_networks
+
+
+class OverviewTab(tabs.Tab):
+    name = _("Overview")
+    slug = "overview"
+    template_name = ("project/shares/share_networks/_detail_overview.html")
+
+    def get_context_data(self, request):
+        return {"share_network": self.tab_group.kwargs['share_network']}
+
+
+class ShareNetworkDetailTabs(tabs.TabGroup):
+    slug = "share_network_details"
+    tabs = (OverviewTab,)

@@ -127,7 +127,8 @@ class ShareNetworkTable(tables.DataTable):
         ("DEACTIVATING", None),
         ("ERROR", False),
     )
-    name = tables.Column("name", verbose_name=_("Name"))
+    name = tables.Column("name", verbose_name=_("Name"),
+                         link="horizon:project:shares:share_network_detail")
     ip_version = tables.Column("ip_version", verbose_name=_("IP Version"))
     network_type = tables.Column("network_type",
                                  verbose_name=_("Network Type"))
