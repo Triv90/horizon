@@ -214,5 +214,5 @@ class ShareNetworkTable(tables.DataTable):
     class Meta:
         name = "share_networks"
         verbose_name = _("Share Networks")
-        table_actions = (DeleteShareNetwork, )
+        table_actions = ()
         row_actions = (DeleteShareNetwork, DeactivateShareNetwork, )
