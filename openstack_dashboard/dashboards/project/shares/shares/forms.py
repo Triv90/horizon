@@ -184,11 +184,11 @@ class UpdateForm(forms.SelfHandlingForm):
     def handle(self, request, data):
         share_id = self.initial['share_id']
         try:
-            manila.share_update(request, share_id, data['name'],
-                                 data['description'])
-
+            share = manila.share_get(self.request, share_id)
+            manila.share_update(request, share, data['name'],
+                                data['description'])
             message = _('Updating share "%s"') % data['name']
-            messages.info(request, message)
+            messages.success(request, message)
             return True
         except Exception:
             redirect = reverse("horizon:project:shares:index")

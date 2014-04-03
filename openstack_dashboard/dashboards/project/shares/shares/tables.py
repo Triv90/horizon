@@ -85,7 +85,7 @@ class EditShare(tables.LinkAction):
     name = "edit"
     verbose_name = _("Edit Share")
     url = "horizon:project:shares:update"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal", "btn-create")
     policy_rules = (("share", "share:update"),)
 
     def get_policy_target(self, request, datum=None):
