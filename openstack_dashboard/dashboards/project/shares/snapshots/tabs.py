@@ -20,7 +20,6 @@ from openstack_dashboard.api import manila
 
 from openstack_dashboard.dashboards.project.shares.snapshots \
     import tables as snapshot_tables
-from openstack_dashboard.dashboards.project.shares import utils
 
 
 class SnapshotsTab(tabs.TableTab):
@@ -42,7 +41,6 @@ class SnapshotsTab(tabs.TableTab):
             exceptions.handle(self.request, msg)
             return []
         #Gather our tenants to correlate against IDs
-        utils.set_tenant_name_to_objects(self.request, snapshots)
         return snapshots
 
 

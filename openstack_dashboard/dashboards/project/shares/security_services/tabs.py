@@ -20,7 +20,6 @@ from openstack_dashboard.api import manila
 
 from openstack_dashboard.dashboards.project.shares.security_services \
     import tables as security_services_tables
-from openstack_dashboard.dashboards.project.shares import utils
 
 
 class SecurityServiceTab(tabs.TableTab):
@@ -37,5 +36,4 @@ class SecurityServiceTab(tabs.TableTab):
             exceptions.handle(self.request,
                               _("Unable to retrieve security services"))
 
-        utils.set_tenant_name_to_objects(self.request, security_services)
         return security_services

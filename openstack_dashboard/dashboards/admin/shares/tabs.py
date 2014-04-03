@@ -28,21 +28,7 @@ from openstack_dashboard.dashboards.admin.\
     shares.tables import SecurityServiceTable
 from openstack_dashboard.dashboards.admin.\
     shares.tables import ShareNetworkTable
-
-
-def set_tenant_name_to_objects(request, objects):
-    try:
-        tenants, has_more = keystone.tenant_list(request)
-    except Exception:
-        tenants = []
-        msg = _('Unable to retrieve share project information.')
-        exceptions.handle(request, msg)
-
-    tenant_dict = dict([(t.id, t) for t in tenants])
-    for obj in objects:
-        tenant_id = getattr(obj, "project_id", None)
-        tenant = tenant_dict.get(tenant_id, None)
-        obj.tenant_name = getattr(tenant, "name", None)
+from openstack_dashboard.dashboards.admin.shares import utils
 
 
 class SnapshotsTab(tabs.TableTab):
@@ -64,7 +50,7 @@ class SnapshotsTab(tabs.TableTab):
             exceptions.handle(self.request, msg)
             return []
         #Gather our tenants to correlate against IDs
-        set_tenant_name_to_objects(self.request, snapshots)
+        utils.set_tenant_name_to_objects(self.request, snapshots)
         return snapshots
 
 
@@ -90,7 +76,7 @@ class SharesTab(tabs.TableTab):
                               _('Unable to retrieve share list.'))
             return []
         #Gather our tenants to correlate against IDs
-        set_tenant_name_to_objects(self.request, shares)
+        utils.set_tenant_name_to_objects(self.request, shares)
         self._set_id_if_nameless(shares)
         return shares
 
@@ -110,7 +96,7 @@ class SecurityServiceTab(tabs.TableTab):
             exceptions.handle(self.request,
                               _("Unable to retrieve security services"))
 
-        set_tenant_name_to_objects(self.request, security_services)
+        utils.set_tenant_name_to_objects(self.request, security_services)
         return security_services
 
 
@@ -128,7 +114,7 @@ class ShareNetworkTab(tabs.TableTab):
             share_networks = []
             exceptions.handle(self.request,
                               _("Unable to retrieve share networks"))
-        set_tenant_name_to_objects(self.request, share_networks)
+        utils.set_tenant_name_to_objects(self.request, share_networks)
         return share_networks
 
 

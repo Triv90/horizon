@@ -20,7 +20,6 @@ from openstack_dashboard.api import manila
 
 from openstack_dashboard.dashboards.project.shares.shares \
     import tables as share_tables
-from openstack_dashboard.dashboards.project.shares import utils
 
 
 class SharesTab(tabs.TableTab):
@@ -44,7 +43,6 @@ class SharesTab(tabs.TableTab):
                               _('Unable to retrieve share list.'))
             return []
         #Gather our tenants to correlate against IDs
-        utils.set_tenant_name_to_objects(self.request, shares)
         return shares
 
 

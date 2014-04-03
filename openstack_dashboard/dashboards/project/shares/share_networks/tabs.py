@@ -20,7 +20,6 @@ from openstack_dashboard.api import manila
 
 from openstack_dashboard.dashboards.project.shares.share_networks\
     import tables as share_net_tables
-from openstack_dashboard.dashboards.project.shares import utils
 
 
 class ShareNetworkTab(tabs.TableTab):
@@ -37,5 +36,4 @@ class ShareNetworkTab(tabs.TableTab):
             share_networks = []
             exceptions.handle(self.request,
                               _("Unable to retrieve share networks"))
-        utils.set_tenant_name_to_objects(self.request, share_networks)
         return share_networks
