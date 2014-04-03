@@ -126,7 +126,7 @@ class SnapshotsTable(tables.DataTable):
                            verbose_name=_("Status"),
                            status=True,
                            status_choices=STATUS_CHOICES)
-    source = SnapshotShareNameColumn("share_id",
+    source = SnapshotShareNameColumn("share",
                                      verbose_name=_("Source"),
                                      link="horizon:project:shares:detail")
 

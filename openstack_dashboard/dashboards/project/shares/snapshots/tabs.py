@@ -36,6 +36,11 @@ class SnapshotsTab(tabs.TableTab):
     def get_snapshots_data(self):
         try:
             snapshots = manila.share_snapshot_list(self.request)
+            shares = manila.share_list(self.request)
+            share_names = dict([(share.id, share.name or share.id)
+                                for share in shares])
+            for snapshot in snapshots:
+                snapshot.share = share_names.get(snapshot.share_id)
         except Exception:
             msg = _("Unable to retrieve share snapshots list.")
             exceptions.handle(self.request, msg)
