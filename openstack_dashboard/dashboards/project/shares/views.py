@@ -33,10 +33,10 @@ from openstack_dashboard.dashboards.project.shares.snapshots \
 
 class ShareTabs(tabs.TabGroup):
     slug = "share_tabs"
-    tabs = (security_services_tabs.SecurityServiceTab,
+    tabs = (shares_tabs.SharesTab,
+            snapshots_tabs.SnapshotsTab,
             share_networks_tabs.ShareNetworkTab,
-            shares_tabs.SharesTab,
-            snapshots_tabs.SnapshotsTab)
+            security_services_tabs.SecurityServiceTab,)
     sticky = True
 
 

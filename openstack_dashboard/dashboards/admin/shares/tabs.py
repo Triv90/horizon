@@ -120,7 +120,7 @@ class ShareNetworkTab(tabs.TableTab):
 
 class ShareTabs(tabs.TabGroup):
     slug = "share_tabs"
-    tabs = (SecurityServiceTab, ShareNetworkTab, SharesTab, SnapshotsTab, )
+    tabs = (SharesTab, SnapshotsTab, ShareNetworkTab, SecurityServiceTab,)
     sticky = True
 
 
