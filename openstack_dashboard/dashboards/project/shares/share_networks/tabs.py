@@ -17,6 +17,7 @@ from horizon import exceptions
 from horizon import tabs
 
 from openstack_dashboard.api import manila
+from openstack_dashboard.api import neutron
 
 from openstack_dashboard.dashboards.project.shares.share_networks\
     import tables as share_net_tables
@@ -32,6 +33,15 @@ class ShareNetworkTab(tabs.TableTab):
         try:
             share_networks = manila.share_network_list(self.request,
                                                        detailed=True)
+            neutron_net_names = dict([(net.id, net.name) for net in
+                                      neutron.network_list(self.request)])
+            neutron_subnet_names = dict([(net.id, net.name) for net in
+                                      neutron.subnet_list(self.request)])
+            for share in share_networks:
+                share.neutron_net = neutron_net_names.get(
+                    share.neutron_net_id) or share.neutron_net_id
+                share.neutron_subnet = neutron_subnet_names.get(
+                    share.neutron_subnet_id) or share.neutron_net_id
         except Exception:
             share_networks = []
             exceptions.handle(self.request,
