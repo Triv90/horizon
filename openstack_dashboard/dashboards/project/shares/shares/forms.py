@@ -198,11 +198,11 @@ class UpdateForm(forms.SelfHandlingForm):
 
 
 class AddRule(forms.SelfHandlingForm):
-    access_to = forms.CharField(label=_("Access To"), max_length="255",
-                                required=True)
     type = forms.ChoiceField(label=_("Type"),
                              required=True,
                              choices=(('ip', 'ip'), ('sid', 'sid')))
+    access_to = forms.CharField(label=_("Access To"), max_length="255",
+                                required=True)
 
     def handle(self, request, data):
         share_id = self.initial['share_id']
