@@ -209,6 +209,9 @@ class AddRule(forms.SelfHandlingForm):
         try:
             manila.share_allow(request, share_id, access=data['access_to'],
                                access_type=data['type'])
+            message = _('Creating rule for "%s"') % data['access_to']
+            messages.success(request, message)
+            return True
         except Exception:
             redirect = reverse("horizon:project:shares:index")
             exceptions.handle(request,
