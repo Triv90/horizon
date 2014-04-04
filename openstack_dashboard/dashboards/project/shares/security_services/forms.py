@@ -81,14 +81,15 @@ class Update(forms.SelfHandlingForm):
             label=_("Description"), required=False)
 
     def handle(self, request, data):
-        sec_service_id = self.initial['security_service_id']
+        sec_service_id = self.initial['sec_service_id']
         try:
             manila.security_service_update(request, sec_service_id,
-                                           data['name'],
-                                           data['description'])
+                                           name=data['name'],
+                                           description=data['description'])
 
-            message = _('Updating security service "%s"') % data['name']
-            messages.info(request, message)
+            message = _('Successfully updated security service "%s"')\
+                      % data['name']
+            messages.success(request, message)
             return True
         except Exception:
             redirect = reverse("horizon:project:shares:index")

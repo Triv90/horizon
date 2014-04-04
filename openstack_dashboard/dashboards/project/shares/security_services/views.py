@@ -35,12 +35,35 @@ from openstack_dashboard.dashboards.project.shares.security_services \
 
 
 class UpdateView(forms.ModalFormView):
-    template_name = "project/shares/share_network_update.html"
+    template_name = "project/shares/security_services/update.html"
     form_class = sec_services_forms.Update
     success_url = 'horizon:project:shares:index'
 
     def get_success_url(self):
         return reverse(self.success_url)
+
+    def get_object(self):
+        if not hasattr(self, "_object"):
+            sec_service_id = self.kwargs['sec_service_id']
+            try:
+                self._object = manila.security_service_get(
+                    self.request, sec_service_id)
+            except Exception:
+                msg = _('Unable to retrieve security_service.')
+                url = reverse('horizon:project:shares:index')
+                exceptions.handle(self.request, msg, redirect=url)
+        return self._object
+
+    def get_context_data(self, **kwargs):
+        context = super(UpdateView, self).get_context_data(**kwargs)
+        context['sec_service'] = self.get_object()
+        return context
+
+    def get_initial(self):
+        sec_service = self.get_object()
+        return {'sec_service_id': self.kwargs["sec_service_id"],
+                'name': sec_service.name,
+                'description': sec_service.description}
 
 
 class CreateView(forms.ModalFormView):
