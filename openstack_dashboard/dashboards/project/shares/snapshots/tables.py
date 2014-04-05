@@ -17,7 +17,8 @@
 from django.core.urlresolvers import NoReverseMatch  # noqa
 from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title  # noqa
-from django.utils.translation import string_concat, ugettext_lazy  # noqa
+from django.utils.http import urlencode  # noqa
+from django.utils.translation import string_concat  # noqa
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
@@ -100,6 +101,22 @@ class DeleteSnapshot(tables.DeleteAction):
         return True
 
 
+class CreateShareFromSnapshot(tables.LinkAction):
+    name = "create_from_snapshot"
+    verbose_name = _("Create Share")
+    url = "horizon:project:shares:create"
+    classes = ("ajax-modal", "btn-camera")
+    policy_rules = (("share", "share:create"),)
+
+    def get_link_url(self, datum):
+        base_url = reverse(self.url)
+        params = urlencode({"snapshot_id": self.table.get_object_id(datum)})
+        return "?".join([base_url, params])
+
+    def allowed(self, request, share=None):
+        return share.status == "available"
+
+
 class SnapshotShareNameColumn(tables.Column):
     def get_link_url(self, snapshot):
         return reverse(self.link, args=(snapshot.share_id,))
@@ -139,4 +156,4 @@ class SnapshotsTable(tables.DataTable):
         status_columns = ["status"]
         row_class = UpdateRow
         table_actions = (DeleteSnapshot, )
-        row_actions = (DeleteSnapshot, )
+        row_actions = (DeleteSnapshot, CreateShareFromSnapshot)
