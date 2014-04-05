@@ -14,6 +14,10 @@ from django.conf.urls import patterns  # noqa
 from django.conf.urls import url  # noqa
 
 from openstack_dashboard.dashboards.admin.shares import views
+from openstack_dashboard.dashboards.project.shares.share_networks\
+    import views as project_share_net_views
+from openstack_dashboard.dashboards.project.shares.security_services \
+    import views as project_sec_services_views
 
 urlpatterns = patterns('',
     url(r'^$', views.IndexView.as_view(), name='index'),
@@ -21,4 +25,10 @@ urlpatterns = patterns('',
     url(r'^snapshots/(?P<snapshot_id>[^/]+)$',
         views.SnapshotDetailView.as_view(),
         name='snapshot-detail'),
+    url(r'^share_networks/(?P<share_network_id>[^/]+)$',
+        project_share_net_views.Detail.as_view(),
+        name='share_network_detail'),
+    url(r'^security_services/(?P<sec_service_id>[^/]+)$',
+        project_sec_services_views.Detail.as_view(),
+        name='security_service_detail'),
 )

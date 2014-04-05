@@ -63,7 +63,6 @@ class CreateForm(forms.SelfHandlingForm):
         self.fields['share_network'].choices = \
             [("", "")] + [(net.id, net.name or net.id) for net in
                           share_networks if net.status == "ACTIVE"]
-        import pdb;pdb.set_trace()
         if "snapshot_id" in request.GET:
             try:
                 snapshot = self.get_snapshot(request,

@@ -151,7 +151,8 @@ class DeleteShareNetwork(tables.DeleteAction):
 
 class SecurityServiceTable(tables.DataTable):
     name = tables.Column("name",
-                         verbose_name=_("Name"))
+                         verbose_name=_("Name"),
+                         link="horizon:admin:shares:security_service_detail")
     tenant = tables.Column("tenant_name", verbose_name=_("Project"))
     dns_ip = tables.Column("dns_ip", verbose_name=_("DNS IP"))
     server = tables.Column("server", verbose_name=_("Server"))
@@ -192,7 +193,8 @@ class DeactivateShareNetwork(tables.BatchAction):
 
 class ShareNetworkTable(tables.DataTable):
     name = tables.Column("name",
-                         verbose_name=_("Name"))
+                         verbose_name=_("Name"),
+                         link="horizon:admin:shares:share_network_detail")
     tenant = tables.Column("tenant_name", verbose_name=_("Project"))
     ip_version = tables.Column("ip_version", verbose_name=_("IP Version"))
     network_type = tables.Column("network_type",
