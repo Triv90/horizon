@@ -7,6 +7,8 @@
   <h4>{% trans "Info" %}</h4>
   <hr class="header_rule">
   <dl>
+    <dt>{% trans "Type" %}</dt>
+    <dd>{{ sec_service.type }}</dd>
     <dt>{% trans "Name" %}</dt>
     <dd>{{ sec_service.name }}</dd>
     <dt>{% trans "ID" %}</dt>
@@ -32,9 +34,9 @@
     <dt>{% trans "Server" %}</dt>
     <dd>{{ sec_service.server }}</dd>
     <dt>{% trans "Domain" %}</dt>
-    <dd>{{ sec_service.dns_ip }}</dd>
+    <dd>{{ sec_service.domain }}</dd>
     <dt>{% trans "Sid" %}</dt>
-    <dd>{{ sec_service.dns_ip }}</dd>
+    <dd>{{ sec_service.sid }}</dd>
   </dl>
 </div>
 

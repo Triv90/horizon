@@ -1,7 +1,7 @@
 {% load i18n sizeformat parse_date %}
 {% load url from future %}
 
-<h3>{% trans "Share Overview" %}</h3>
+<h3>{% trans "Share Network Overview" %}</h3>
 
 <div class="info row-fluid detail">
   <h4>{% trans "Info" %}</h4>
@@ -34,10 +34,16 @@
 <div class="status row-fluid detail">
   <h4>{% trans "Security Services" %}</h4>
   <hr class="header_rule">
-  <dl>
   {% for sec_service in share_network.sec_services %}
         {% url 'horizon:project:shares:security_service_detail' sec_service.id as sec_service_url%}
+  <dl>
+        <dt>{% trans "Id" %}</dt>
+        <dd><a href="{{ sec_service_url }}">{{ sec_service.id }}</a></dd>
+        <dt>{% trans "Name" %}</dt>
         <dd><a href="{{ sec_service_url }}">{{ sec_service.name }}</a></dd>
-  {% endfor %}
+        <dt>{% trans "Type" %}</dt>
+        <dd>{{ sec_service.type }}</dd>
   </dl>
+  <br />
+  {% endfor %}
 </div>
