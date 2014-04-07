@@ -46,7 +46,6 @@ class DeleteShare(tables.DeleteAction):
 
     def delete(self, request, obj_id):
         obj = self.table.get_object_by_id(obj_id)
-        name = self.table.get_object_display(obj)
         try:
             manila.share_delete(request, obj_id)
         except Exception:

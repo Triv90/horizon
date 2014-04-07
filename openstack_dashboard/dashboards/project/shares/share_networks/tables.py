@@ -23,6 +23,7 @@ from django.utils.translation import ugettext_lazy as _
 from horizon import tables
 
 from openstack_dashboard.api import manila
+from openstack_dashboard.api import neutron
 from openstack_dashboard.usage import quotas
 
 
@@ -116,6 +117,10 @@ class UpdateRow(tables.Row):
         share_net = manila.share_network_get(request, share_net_id)
         if not share_net.name:
             share_net.name = share_net_id
+        share_net.neutron_net = neutron.network_get(
+            request, share_net.neutron_net_id).name_or_id
+        share_net.neutron_subnet = neutron.subnet_get(
+            request, share_net.neutron_subnet_id).name_or_id
         return share_net
 
 
@@ -133,7 +138,7 @@ class ShareNetworkTable(tables.DataTable):
     network_type = tables.Column("network_type",
                                  verbose_name=_("Network Type"))
     neutron_net = tables.Column("neutron_net",
-                                   verbose_name=_("Neutron Net ID"))
+                                verbose_name=_("Neutron Net ID"))
     neutron_subnet = tables.Column("neutron_subnet",
                                    verbose_name=_("Neutron Subnet ID"))
     segmentation_id = tables.Column("segmentation_id",
