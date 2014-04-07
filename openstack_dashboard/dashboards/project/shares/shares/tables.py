@@ -20,6 +20,7 @@ from django.template.defaultfilters import title  # noqa
 from django.utils.translation import string_concat, ugettext_lazy  # noqa
 from django.utils.translation import ugettext_lazy as _
 from horizon import exceptions
+from horizon import messages
 from horizon import tables
 
 from openstack_dashboard.api import manila
@@ -49,10 +50,8 @@ class DeleteShare(tables.DeleteAction):
         try:
             manila.share_delete(request, obj_id)
         except Exception:
-            msg = _('Unable to delete share "%s". One or more snapshots '
-                    'depend on it.')
-            exceptions.check_message(["snapshots", "dependent"], msg % name)
-            raise
+            msg = _('Unable to delete share "%s". ') % obj_id
+            messages.error(request, msg)
 
     def allowed(self, request, share=None):
         if share:
