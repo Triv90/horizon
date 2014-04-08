@@ -34,6 +34,17 @@
 </div>
 
 <div class="status row-fluid detail">
+  <h4>{% trans "Access Rules" %}</h4>
+  <hr class="header_rule">
+  <dl>
+  {% for rule in share.rules %}
+    <dt>{{ rule.access_type }}</dt>
+    <dd>{{ rule.access_to }}</dd>
+  {% endfor %}
+  </dl>
+</div>
+
+<div class="status row-fluid detail">
   <h4>{% trans "Metadata" %}</h4>
   <hr class="header_rule">
   <dl>

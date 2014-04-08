@@ -69,6 +69,7 @@ class DetailView(tabs.TabView):
         try:
             share_id = self.kwargs['share_id']
             share = manila.share_get(self.request, share_id)
+            share.rules = manila.share_rules_list(self.request, share_id)
         except Exception:
             redirect = reverse('horizon:project:shares:index')
             exceptions.handle(self.request,
