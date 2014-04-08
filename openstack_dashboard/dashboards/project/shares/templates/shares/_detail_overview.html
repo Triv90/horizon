@@ -19,6 +19,10 @@
     <dd>{{ share.status|capfirst }}</dd>
     <dt>{% trans "Export location" %}</dt>
     <dd>{{ share.export_location }}</dd>
+    {% if share.snapshot_id %}
+    <dt>{% trans "Snapshot ID" %}</dt>
+    <dd>{{ share.snapshot_id }}</dd>
+    {% endif %}
   </dl>
 </div>
 
