@@ -33,9 +33,14 @@ from openstack_dashboard.api import neutron
 
 class Create(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Name"))
-    neutron_net_id = forms.ChoiceField(choices=(), label=_("Neutron Net ID"))
-    neutron_subnet_id = forms.ChoiceField(choices=(),
-                                          label=_("Neutron Subnet ID"))
+    neutron_net_id = forms.ChoiceField(choices=(),
+                                       label=_("Neutron Net ID"),
+                                       widget=forms.Select(attrs={
+                                           'class': 'switchable',
+                                           'data-slug': 'net'
+                                       }))
+    #neutron_subnet_id = forms.ChoiceField(choices=(),
+    #                                      label=_("Neutron Subnet ID"))
     description = forms.CharField(widget=forms.Textarea,
                                   label=_("Description"), required=False)
 
@@ -43,19 +48,39 @@ class Create(forms.SelfHandlingForm):
         super(Create, self).__init__(
             request, *args, **kwargs)
         net_choices = neutron.network_list(request)
-        subnet_choices = neutron.subnet_list(request)
         self.fields['neutron_net_id'].choices = [(' ', ' ')] + \
                                                 [(choice.id, choice.name_or_id)
                                                  for choice in net_choices]
-        self.fields['neutron_subnet_id'].choices = [(' ', ' ')] + \
-                                                   [(choice.id,
-                                                     choice.name_or_id) for
-                                                    choice in subnet_choices]
+        for net in net_choices:
+            # For each network create switched choice field with
+            # the its subnet choices
+            subnet_field_name = 'subnet-choices-%s' % net.id
+            subnet_field = forms.ChoiceField(
+                choices=(), label=_("Neutron Subnet ID"),
+                widget=forms.Select(attrs={
+                    'class': 'switched',
+                    'data-switch-on': 'net',
+                    'data-net-%s' % net.id: _("Neutron Subnet ID")
+                }))
+            # Insert subnet choice field under network choice field
+            # (before Description field that has index 2)
+            self.fields.insert(2, subnet_field_name, subnet_field)
+            subnet_choices = neutron.subnet_list(request, network_id=net.id)
+            self.fields[subnet_field_name].choices = [(' ', ' ')] + \
+                                                     [(choice.id,
+                                                       choice.name_or_id) for
+                                                      choice in subnet_choices]
 
     def handle(self, request, data):
         try:
             # Remove any new lines in the public key
-            share_network = manila.share_network_create(request, **data)
+            share_net_id = data['neutron_net_id']
+            subnet_key = 'subnet-choices-%s' % share_net_id
+            data['neutron_subnet_id'] = data[subnet_key]
+            share_network = manila.share_network_create(
+                request, name=data['name'], description=data['description'],
+                neutron_net_id=data['neutron_net_id'],
+                neutron_subnet_id=data[subnet_key])
             messages.success(request, _('Successfully created share'
                                         ' network: %s') % data['name'])
             return share_network
