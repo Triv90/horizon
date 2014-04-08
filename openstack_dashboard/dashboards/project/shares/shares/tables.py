@@ -184,15 +184,18 @@ class DeleteRule(tables.DeleteAction):
         except Exception:
             msg = _('Unable to delete rule "%s".') % obj_id
             exceptions.handle(request, msg)
-#
-#
-#class UpdateRuleRow(UpdateRow):
-#
-#    def get_data(self, request, rule_id):
-#        share = manila.share_rules_list(request, search_opts={'id': rule_id})
-#        if not share.name:
-#            share.name = share_id
-#        return share
+
+
+class UpdateRuleRow(tables.Row):
+    ajax = True
+
+    def get_data(self, request, rule_id):
+        rules = manila.share_rules_list(request, self.table.kwargs['share_id'])
+        if rules:
+            for rule in rules:
+                if rule.id == rule_id:
+                    return rule
+        raise exceptions.NotFound
 
 
 class RulesTable(tables.DataTable):
@@ -207,7 +210,7 @@ class RulesTable(tables.DataTable):
         name = "rules"
         verbose_name = _("Rules")
         status_columns = ["status"]
-        #row_class = UpdateRuleRow
+        row_class = UpdateRuleRow
         table_actions = (DeleteRule, AddRule)
         row_actions = (DeleteRule, )
 
