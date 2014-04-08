@@ -200,6 +200,9 @@ class RulesTable(tables.DataTable):
     access = tables.Column("access_to", verbose_name=_("Access to"))
     status = tables.Column("state", verbose_name=_("Status"))
 
+    def get_object_display(self, obj):
+        return obj.id
+
     class Meta:
         name = "rules"
         verbose_name = _("Rules")
