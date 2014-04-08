@@ -135,7 +135,7 @@ class SharesTableBase(tables.DataTable):
                            status_choices=STATUS_CHOICES)
 
     def get_object_display(self, obj):
-        return obj.name
+        return obj.name or obj.id
 
 
 class SharesFilterAction(tables.FilterAction):
