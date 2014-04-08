@@ -22,6 +22,7 @@ from cinderclient import exceptions as cinderclient
 from glanceclient.common import exceptions as glanceclient
 from heatclient import exc as heatclient
 from keystoneclient import exceptions as keystoneclient
+from manilaclient import exceptions as manilaclient
 from neutronclient.common import exceptions as neutronclient
 from novaclient import exceptions as novaclient
 from swiftclient import client as swiftclient
@@ -36,6 +37,7 @@ UNAUTHORIZED = (
     novaclient.Unauthorized,
     novaclient.Forbidden,
     glanceclient.Unauthorized,
+    manilaclient.Unauthorized,
     neutronclient.Unauthorized,
     neutronclient.Forbidden,
     heatclient.HTTPUnauthorized,
@@ -49,6 +51,7 @@ NOT_FOUND = (
     cinderclient.NotFound,
     novaclient.NotFound,
     glanceclient.NotFound,
+    manilaclient.NotFound,
     neutronclient.NetworkNotFoundClient,
     neutronclient.PortNotFoundClient,
     heatclient.HTTPNotFound,
@@ -65,6 +68,7 @@ RECOVERABLE = (
     cinderclient.ConnectionError,
     novaclient.ClientException,
     glanceclient.ClientException,
+    manilaclient.ClientException,
     # NOTE(amotoki): Neutron exceptions other than the first one
     # are recoverable in many cases (e.g., NetworkInUse is not
     # raised once VMs which use the network are terminated).
