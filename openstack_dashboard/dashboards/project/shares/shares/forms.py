@@ -46,10 +46,12 @@ class CreateForm(forms.SelfHandlingForm):
                                           widget=forms.Select(attrs={
                                               'class': 'switchable',
                                               'data-slug': 'source'}))
-    snapshot_source = forms.ChoiceField(
+    snapshot = forms.ChoiceField(
         label=_("Use snapshot as a source"),
         widget=fields.SelectWidget(
-            attrs={'class': 'snapshot-selector'},
+            attrs={'class': 'switched',
+                   'data-switch-on': 'source',
+                   'data-source-snapshot': _('Snapshot')},
             data_attrs=('size', 'name'),
             transform=lambda x: "%s (%sGB)" % (x.name, x.size)),
         required=False)
@@ -69,8 +71,8 @@ class CreateForm(forms.SelfHandlingForm):
                                              request.GET["snapshot_id"])
                 self.fields['name'].initial = snapshot.name
                 self.fields['size'].initial = snapshot.size
-                self.fields['snapshot_source'].choices = ((snapshot.id,
-                                                           snapshot),)
+                self.fields['snapshot'].choices = ((snapshot.id,
+                                                    snapshot),)
                 try:
                     # Set the share type from the original share
                     orig_share = manila.share_get(request,
@@ -93,13 +95,13 @@ class CreateForm(forms.SelfHandlingForm):
                 snapshots = [s for s in snapshot_list
                               if s.status == 'available']
                 if snapshots:
-                    source_type_choices.append(("snapshot_source",
+                    source_type_choices.append(("snapshot",
                                                 _("Snapshot")))
                     choices = [('', _("Choose a snapshot"))] + \
                               [(s.id, s) for s in snapshots]
-                    self.fields['snapshot_source'].choices = choices
+                    self.fields['snapshot'].choices = choices
                 else:
-                    del self.fields['snapshot_source']
+                    del self.fields['snapshot']
             except Exception:
                 exceptions.handle(request, _("Unable to retrieve "
                         "share snapshots."))
@@ -122,11 +124,11 @@ class CreateForm(forms.SelfHandlingForm):
             snapshot_id = None
             source_type = data.get('share_source_type', None)
             share_network = data.get('share_network', None)
-            if (data.get("snapshot_source", None) and
-                  source_type in [None, 'snapshot_source']):
+            if (data.get("snapshot", None) and
+                  source_type in [None, 'snapshot']):
                 # Create from Snapshot
                 snapshot = self.get_snapshot(request,
-                                             data["snapshot_source"])
+                                             data["snapshot"])
                 snapshot_id = snapshot.id
                 if (data['size'] < snapshot.size):
                     error_message = _('The share size cannot be less than '

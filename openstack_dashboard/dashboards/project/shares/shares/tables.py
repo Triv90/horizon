@@ -103,6 +103,8 @@ class UpdateRow(tables.Row):
         share = manila.share_get(request, share_id)
         if not share.name:
             share.name = share_id
+        share_net = manila.share_network_get(request, share.share_network_id)
+        share.share_network = share_net.name or share_net.id
         return share
 
 
@@ -180,7 +182,7 @@ class DeleteRule(tables.DeleteAction):
         try:
             manila.share_deny(request, self.table.kwargs['share_id'], obj_id)
         except Exception:
-            msg = _('Unable to delete rule "%s".')
+            msg = _('Unable to delete rule "%s".') % obj_id
             exceptions.handle(request, msg)
 #
 #
