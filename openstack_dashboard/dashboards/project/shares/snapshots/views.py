@@ -123,4 +123,3 @@ class UpdateView(forms.ModalFormView):
     def get_success_url(self):
         return "?".join([reverse(self.success_url),
                          urlencode({"tab": "share_tabs__snapshots_tab"})])
-
