@@ -107,12 +107,16 @@ def share_snapshot_get(request, snapshot_id):
     return manilaclient(request).share_snapshots.get(snapshot_id)
 
 
+def share_snapshot_update(request, snapshot_id, **kwargs):
+    return manilaclient(request).share_snapshots.update(snapshot_id, **kwargs)
+
+
 def share_snapshot_list(request):
     return manilaclient(request).share_snapshots.list()
 
 
 def share_snapshot_create(request, share_id, name=None,
-                           description=None, force=False):
+                          description=None, force=False):
     return manilaclient(request).share_snapshots.create(
         share_id, force=force, name=name, description=description)
 

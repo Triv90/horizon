@@ -20,6 +20,7 @@ Views for managing shares.
 from django.core.urlresolvers import reverse
 from django.forms import ValidationError  # noqa
 from django.template.defaultfilters import filesizeformat  # noqa
+from django.utils.http import urlencode  # noqa
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
@@ -65,4 +66,27 @@ class CreateSnapshotForm(forms.SelfHandlingForm):
             redirect = reverse("horizon:project:shares:index")
             exceptions.handle(request,
                               _('Unable to create share snapshot.'),
+                              redirect=redirect)
+
+
+class UpdateForm(forms.SelfHandlingForm):
+    name = forms.CharField(max_length="255", label=_("Share Name"))
+    description = forms.CharField(widget=forms.Textarea,
+                                  label=_("Description"), required=False)
+
+    def handle(self, request, data):
+        snapshot_id = self.initial['snapshot_id']
+        try:
+            share = manila.share_snapshot_get(self.request, snapshot_id)
+            manila.share_snapshot_update(
+                request, share, display_name=data['name'],
+                display_description=data['description'])
+            message = _('Updating snapshot "%s"') % data['name']
+            messages.success(request, message)
+            return True
+        except Exception:
+            redirect = "?".join([reverse("horizon:project:shares:index"),
+                                 urlencode({"tab": "snapshots"})])
+            exceptions.handle(request,
+                              _('Unable to update snapshot.'),
                               redirect=redirect)

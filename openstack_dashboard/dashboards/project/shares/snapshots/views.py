@@ -20,6 +20,7 @@ Views for managing volumes.
 
 from django.core.urlresolvers import reverse
 from django.core.urlresolvers import reverse_lazy
+from django.utils.http import urlencode
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
@@ -87,3 +88,36 @@ class CreateSnapshotView(forms.ModalFormView):
 
     def get_initial(self):
         return {'share_id': self.kwargs["share_id"]}
+
+
+class UpdateView(forms.ModalFormView):
+    form_class = snapshot_forms.UpdateForm
+    template_name = 'project/shares/snapshots/update.html'
+    success_url = "horizon:project:shares:index"
+
+    def get_object(self):
+        if not hasattr(self, "_object"):
+            snap_id = self.kwargs['snapshot_id']
+            try:
+                self._object = manila.share_snapshot_get(self.request, snap_id)
+            except Exception:
+                msg = _('Unable to retrieve snapshot.')
+                url = reverse('horizon:project:shares:index')
+                exceptions.handle(self.request, msg, redirect=url)
+        return self._object
+
+    def get_context_data(self, **kwargs):
+        context = super(UpdateView, self).get_context_data(**kwargs)
+        context['snapshot'] = self.get_object()
+        return context
+
+    def get_initial(self):
+        snapshot = self.get_object()
+        return {'snapshot_id': self.kwargs["snapshot_id"],
+                'name': snapshot.name,
+                'description': snapshot.description}
+
+    def get_success_url(self):
+        return "?".join([reverse(self.success_url),
+                         urlencode({"tab": "share_tabs__snapshots_tab"})])
+

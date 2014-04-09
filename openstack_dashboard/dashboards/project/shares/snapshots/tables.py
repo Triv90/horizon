@@ -117,6 +117,13 @@ class CreateShareFromSnapshot(tables.LinkAction):
         return share.status == "available"
 
 
+class EditSnapshot(tables.LinkAction):
+    name = "edit_snapshot"
+    verbose_name = _("Edit Snapshot")
+    url = "horizon:project:shares:edit_snapshot"
+    classes = ("ajax-modal", "btn-camera")
+
+
 class SnapshotShareNameColumn(tables.Column):
     def get_link_url(self, snapshot):
         return reverse(self.link, args=(snapshot.share_id,))
@@ -156,4 +163,4 @@ class SnapshotsTable(tables.DataTable):
         status_columns = ["status"]
         row_class = UpdateRow
         table_actions = (DeleteSnapshot, )
-        row_actions = (DeleteSnapshot, CreateShareFromSnapshot)
+        row_actions = (DeleteSnapshot, CreateShareFromSnapshot, EditSnapshot)
