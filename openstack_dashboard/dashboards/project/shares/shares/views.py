@@ -160,6 +160,8 @@ class ManageRulesView(tables.DataTableView):
 
     def get_context_data(self, **kwargs):
         context = super(ManageRulesView, self).get_context_data(**kwargs)
+        share = manila.share_get(self.request, self.kwargs['share_id'])
+        context['share_display_name'] = share.name or share.id
         context["share"] = self.get_data()
         return context
 
