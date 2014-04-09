@@ -59,7 +59,7 @@ class CreateSnapshotForm(forms.SelfHandlingForm):
                                                      data['description'],
                                                      force=force)
 
-            messages.info(request, message)
+            messages.success(request, message)
             return snapshot
         except Exception:
             redirect = reverse("horizon:project:shares:index")
