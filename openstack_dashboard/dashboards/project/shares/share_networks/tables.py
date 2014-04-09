@@ -115,8 +115,6 @@ class UpdateRow(tables.Row):
 
     def get_data(self, request, share_net_id):
         share_net = manila.share_network_get(request, share_net_id)
-        if not share_net.name:
-            share_net.name = share_net_id
         share_net.neutron_net = neutron.network_get(
             request, share_net.neutron_net_id).name_or_id
         share_net.neutron_subnet = neutron.subnet_get(
