@@ -76,7 +76,7 @@ class DeleteSnapshot(tables.DeleteAction):
     data_type_singular = _("Snapshot")
     data_type_plural = _("Snapshots")
     action_past = _("Scheduled deletion of %(data_type)s")
-    policy_rules = (("snapshot", "snapshot:delete"),)
+    policy_rules = (("share", "share:delete_snapshot"),)
 
     def get_policy_target(self, request, datum=None):
         project_id = None
