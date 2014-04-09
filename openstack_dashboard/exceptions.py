@@ -72,7 +72,6 @@ RECOVERABLE = (
     # NOTE(amotoki): Neutron exceptions other than the first one
     # are recoverable in many cases (e.g., NetworkInUse is not
     # raised once VMs which use the network are terminated).
-    manilaclient.ClientException,
     neutronclient.NeutronClientException,
     neutronclient.NetworkInUseClient,
     neutronclient.PortInUseClient,
