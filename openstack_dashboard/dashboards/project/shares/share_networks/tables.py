@@ -36,11 +36,13 @@ class Create(tables.LinkAction):
     verbose_name = _("Create Share Network")
     url = "horizon:project:shares:create_share_network"
     classes = ("ajax-modal", "btn-create")
+    policy_rules = (("share", "share_network:create"),)
 
 
 class Delete(tables.DeleteAction):
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
+    policy_rules = (("share", "share_network:delete"),)
 
     def delete(self, request, obj_id):
         manila.share_network_delete(request, obj_id)
@@ -58,7 +60,7 @@ class Activate(tables.BatchAction):
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
     verbose_name = _("Activate Share Network")
-    #policy_rules = (("share", "volume_extension:types_manage"),)
+    policy_rules = (("share", "share_network:activate"),)
 
     def action(self, request, obj_id):
         manila.share_network_activate(request, obj_id)
@@ -84,6 +86,7 @@ class Deactivate(tables.BatchAction):
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
     verbose_name = _("Activate Share Network")
+    policy_rules = (("share", "share_network:deactivate"),)
 
     def action(self, request, obj_id):
         manila.share_network_deactivate(request, obj_id)
@@ -104,6 +107,7 @@ class EditShareNetwork(tables.LinkAction):
     verbose_name = _("Edit Share Network")
     url = "horizon:project:shares:update_share_network"
     classes = ("ajax-modal", "btn-create")
+    policy_rules = (("share", "share_network:update"),)
 
     def allowed(self, request, obj_id):
         sn = manila.share_network_get(request, obj_id)
