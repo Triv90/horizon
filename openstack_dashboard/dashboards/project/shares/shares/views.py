@@ -15,7 +15,7 @@
 #    under the License.
 
 """
-Views for managing volumes.
+Views for managing shares.
 """
 
 from django.core.urlresolvers import reverse
@@ -49,8 +49,7 @@ class ShareTableMixIn(object):
 
     def _set_id_if_nameless(self, shares):
         for share in shares:
-            # It is possible to create a volume with no name through the
-            # EC2 API, use the ID in those cases.
+            # It is possible to create a share with no name
             if not share.name:
                 share.name = share.id
 
@@ -134,7 +133,7 @@ class AddRuleView(forms.ModalFormView):
             try:
                 self._object = manila.share_get(self.request, vol_id)
             except Exception:
-                msg = _('Unable to retrieve volume.')
+                msg = _('Unable to retrieve share.')
                 url = reverse('horizon:project:shares:index')
                 exceptions.handle(self.request, msg, redirect=url)
         return self._object
