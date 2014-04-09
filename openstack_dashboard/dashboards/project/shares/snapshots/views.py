@@ -37,7 +37,7 @@ from openstack_dashboard.usage import quotas
 
 class SnapshotDetailView(tabs.TabView):
     tab_group_class = snapshot_tabs.SnapshotDetailTabs
-    template_name = 'project/shares/snapshot_detail.html'
+    template_name = 'project/shares/snapshots/snapshot_detail.html'
 
     def get_context_data(self, **kwargs):
         context = super(SnapshotDetailView, self).get_context_data(**kwargs)
@@ -63,7 +63,7 @@ class SnapshotDetailView(tabs.TabView):
 
 class CreateSnapshotView(forms.ModalFormView):
     form_class = snapshot_forms.CreateSnapshotForm
-    template_name = 'project/shares/create_snapshot.html'
+    template_name = 'project/shares/snapshots/create_snapshot.html'
     success_url = reverse_lazy("horizon:project:shares:index")
 
     def get_context_data(self, **kwargs):

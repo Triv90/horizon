@@ -52,7 +52,7 @@ class SnapshotsTab(tabs.TableTab):
 class SnapshotOverviewTab(tabs.Tab):
     name = _("Overview")
     slug = "overview"
-    template_name = ("project/shares/"
+    template_name = ("project/shares/snapshots/"
                      "_snapshot_detail_overview.html")
 
     def get_context_data(self, request):

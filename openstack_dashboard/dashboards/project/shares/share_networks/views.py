@@ -36,7 +36,7 @@ from openstack_dashboard.dashboards.project.shares.share_networks \
 
 class Update(workflows.WorkflowView):
     workflow_class = share_net_workflows.UpdateShareNetworkWorkflow
-    template_name = "project/shares/share_network_update.html"
+    template_name = "project/shares/share_networks/share_network_update.html"
     success_url = 'horizon:project:shares:index'
 
     def get_initial(self):
@@ -50,7 +50,7 @@ class Update(workflows.WorkflowView):
 
 class Create(forms.ModalFormView):
     form_class = share_net_forms.Create
-    template_name = 'project/shares/create_share_network.html'
+    template_name = 'project/shares/share_networks/create_share_network.html'
     success_url = 'horizon:project:shares:index'
 
     def get_success_url(self):

@@ -57,7 +57,7 @@ class ShareTableMixIn(object):
 
 class DetailView(tabs.TabView):
     tab_group_class = shares_tabs.ShareDetailTabs
-    template_name = 'project/shares/detail.html'
+    template_name = 'project/shares/shares/detail.html'
 
     def get_context_data(self, **kwargs):
         context = super(DetailView, self).get_context_data(**kwargs)
@@ -84,7 +84,7 @@ class DetailView(tabs.TabView):
 
 class CreateView(forms.ModalFormView):
     form_class = share_form.CreateForm
-    template_name = 'project/shares/create.html'
+    template_name = 'project/shares/shares/create.html'
     success_url = reverse_lazy("horizon:project:shares:index")
 
     def get_context_data(self, **kwargs):
@@ -98,7 +98,7 @@ class CreateView(forms.ModalFormView):
 
 class UpdateView(forms.ModalFormView):
     form_class = share_form.UpdateForm
-    template_name = 'project/shares/update.html'
+    template_name = 'project/shares/shares/update.html'
     success_url = reverse_lazy("horizon:project:shares:index")
 
     def get_object(self):
@@ -126,7 +126,7 @@ class UpdateView(forms.ModalFormView):
 
 class AddRuleView(forms.ModalFormView):
     form_class = share_form.AddRule
-    template_name = 'project/shares/rule_add.html'
+    template_name = 'project/shares/shares/rule_add.html'
 
     def get_object(self):
         if not hasattr(self, "_object"):
@@ -157,7 +157,7 @@ class AddRuleView(forms.ModalFormView):
 
 class ManageRulesView(tables.DataTableView):
     table_class = shares_tables.RulesTable
-    template_name = 'project/shares/manage_rules.html'
+    template_name = 'project/shares/shares/manage_rules.html'
 
     def get_context_data(self, **kwargs):
         context = super(ManageRulesView, self).get_context_data(**kwargs)

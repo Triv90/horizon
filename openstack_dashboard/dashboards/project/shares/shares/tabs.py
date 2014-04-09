@@ -57,8 +57,7 @@ class SharesTab(tabs.TableTab):
 class OverviewTab(tabs.Tab):
     name = _("Overview")
     slug = "overview"
-    template_name = ("project/shares/"
-                     "_detail_overview.html")
+    template_name = "project/shares/shares/_detail_overview.html"
 
     def get_context_data(self, request):
         return {"share": self.tab_group.kwargs['share']}

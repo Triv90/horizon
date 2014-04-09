@@ -68,7 +68,8 @@ class UpdateView(forms.ModalFormView):
 
 class CreateView(forms.ModalFormView):
     form_class = sec_services_forms.Create
-    template_name = 'project/shares/create_security_service.html'
+    template_name = ('project/shares/security_services'
+                     '/create_security_service.html')
     success_url = 'horizon:project:shares:index'
 
     def get_success_url(self):
@@ -77,7 +78,8 @@ class CreateView(forms.ModalFormView):
 
 class AddSecurityServiceView(forms.ModalFormView):
     form_class = share_net_forms.AddSecurityServiceForm
-    template_name = 'project/shares/add_security_service.html'
+    template_name = ('project/shares/security_services'
+                     '/add_security_service.html')
     success_url = 'horizon:project:shares:index'
 
     def get_object(self):
