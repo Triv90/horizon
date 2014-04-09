@@ -151,7 +151,7 @@ class ManageRules(tables.LinkAction):
     verbose_name = _("Manage Rules")
     url = "horizon:project:shares:manage_rules"
     classes = ("btn-edit", )
-    #policy_rules = (("share", "share:update"),)
+    policy_rules = (("share", "share:access_get_all"),)
 
 
 class AddRule(tables.LinkAction):
