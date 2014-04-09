@@ -112,7 +112,10 @@ class Detail(tabs.TabView):
 
     def get_context_data(self, **kwargs):
         context = super(Detail, self).get_context_data(**kwargs)
-        context["sec_service"] = self.get_data()
+        sec_service = self.get_data()
+        context["sec_service"] = sec_service
+        sec_service_display_name = sec_service.name or sec_service.id
+        context["sec_service_display_name"] = sec_service_display_name
         return context
 
     def get_data(self):
