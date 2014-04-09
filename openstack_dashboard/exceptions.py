@@ -68,6 +68,7 @@ RECOVERABLE = (
     cinderclient.ConnectionError,
     novaclient.ClientException,
     glanceclient.ClientException,
+    manilaclient.ClientException,
     # NOTE(amotoki): Neutron exceptions other than the first one
     # are recoverable in many cases (e.g., NetworkInUse is not
     # raised once VMs which use the network are terminated).
