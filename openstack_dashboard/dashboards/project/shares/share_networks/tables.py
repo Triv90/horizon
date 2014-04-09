@@ -146,7 +146,7 @@ class ShareNetworkTable(tables.DataTable):
                            status_choices=STATUS_CHOICES)
 
     def get_object_display(self, share_network):
-        return share_network.name
+        return share_network.name or str(share_network.id)
 
     def get_object_id(self, share_network):
         return str(share_network.id)
