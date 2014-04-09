@@ -51,7 +51,7 @@ class SecurityServiceTable(tables.DataTable):
     sid = tables.Column("sid", verbose_name=_("Sid"))
 
     def get_object_display(self, security_service):
-        return security_service.name
+        return security_service.name or str(security_service.id)
 
     def get_object_id(self, security_service):
         return str(security_service.id)
