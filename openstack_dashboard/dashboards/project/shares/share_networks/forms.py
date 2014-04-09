@@ -34,7 +34,7 @@ from openstack_dashboard.api import neutron
 class Create(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Name"))
     neutron_net_id = forms.ChoiceField(choices=(),
-                                       label=_("Neutron Net ID"),
+                                       label=_("Neutron Net"),
                                        widget=forms.Select(attrs={
                                            'class': 'switchable',
                                            'data-slug': 'net'
@@ -56,11 +56,11 @@ class Create(forms.SelfHandlingForm):
             # the its subnet choices
             subnet_field_name = 'subnet-choices-%s' % net.id
             subnet_field = forms.ChoiceField(
-                choices=(), label=_("Neutron Subnet ID"),
+                choices=(), label=_("Neutron Subnet"),
                 widget=forms.Select(attrs={
                     'class': 'switched',
                     'data-switch-on': 'net',
-                    'data-net-%s' % net.id: _("Neutron Subnet ID")
+                    'data-net-%s' % net.id: _("Neutron Subnet")
                 }))
             # Insert subnet choice field under network choice field
             # (before Description field that has index 2)

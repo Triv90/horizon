@@ -14,10 +14,10 @@ from django.conf.urls import patterns  # noqa
 from django.conf.urls import url  # noqa
 
 from openstack_dashboard.dashboards.admin.shares import views
-from openstack_dashboard.dashboards.project.shares.share_networks\
-    import views as project_share_net_views
 from openstack_dashboard.dashboards.project.shares.security_services \
     import views as project_sec_services_views
+from openstack_dashboard.dashboards.project.shares.share_networks\
+    import views as project_share_net_views
 
 urlpatterns = patterns('',
     url(r'^$', views.IndexView.as_view(), name='index'),

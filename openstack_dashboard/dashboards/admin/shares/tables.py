@@ -200,9 +200,9 @@ class ShareNetworkTable(tables.DataTable):
     network_type = tables.Column("network_type",
                                  verbose_name=_("Network Type"))
     neutron_net_id = tables.Column("neutron_net_id",
-                                   verbose_name=_("Neutron Net ID"))
+                                   verbose_name=_("Neutron Net"))
     neutron_subnet_id = tables.Column("neutron_subnet_id",
-                                   verbose_name=_("Neutron Subnet ID"))
+                                   verbose_name=_("Neutron Subnet"))
     segmentation_id = tables.Column("segmentation_id",
                                     verbose_name=_("Segmentation Id"))
     status = tables.Column("status", verbose_name=_("Status"))

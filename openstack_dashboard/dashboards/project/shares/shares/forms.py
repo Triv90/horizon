@@ -162,7 +162,7 @@ class CreateForm(forms.SelfHandlingForm):
                                         snapshot_id=snapshot_id,
                                         metadata=metadata)
             message = _('Creating share "%s"') % data['name']
-            messages.info(request, message)
+            messages.success(request, message)
             return share
         except ValidationError as e:
             self.api_error(e.messages[0])

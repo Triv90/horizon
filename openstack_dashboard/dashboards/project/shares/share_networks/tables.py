@@ -36,11 +36,13 @@ class Create(tables.LinkAction):
     verbose_name = _("Create Share Network")
     url = "horizon:project:shares:create_share_network"
     classes = ("ajax-modal", "btn-create")
+    policy_rules = (("share", "share_network:create"),)
 
 
 class Delete(tables.DeleteAction):
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
+    policy_rules = (("share", "share_network:delete"),)
 
     def delete(self, request, obj_id):
         manila.share_network_delete(request, obj_id)
@@ -58,7 +60,7 @@ class Activate(tables.BatchAction):
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
     verbose_name = _("Activate Share Network")
-    #policy_rules = (("share", "volume_extension:types_manage"),)
+    policy_rules = (("share", "share_network:activate"),)
 
     def action(self, request, obj_id):
         manila.share_network_activate(request, obj_id)
@@ -84,6 +86,7 @@ class Deactivate(tables.BatchAction):
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
     verbose_name = _("Activate Share Network")
+    policy_rules = (("share", "share_network:deactivate"),)
 
     def action(self, request, obj_id):
         manila.share_network_deactivate(request, obj_id)
@@ -104,6 +107,7 @@ class EditShareNetwork(tables.LinkAction):
     verbose_name = _("Edit Share Network")
     url = "horizon:project:shares:update_share_network"
     classes = ("ajax-modal", "btn-create")
+    policy_rules = (("share", "share_network:update"),)
 
     def allowed(self, request, obj_id):
         sn = manila.share_network_get(request, obj_id)
@@ -115,8 +119,6 @@ class UpdateRow(tables.Row):
 
     def get_data(self, request, share_net_id):
         share_net = manila.share_network_get(request, share_net_id)
-        if not share_net.name:
-            share_net.name = share_net_id
         share_net.neutron_net = neutron.network_get(
             request, share_net.neutron_net_id).name_or_id
         share_net.neutron_subnet = neutron.subnet_get(
@@ -138,9 +140,9 @@ class ShareNetworkTable(tables.DataTable):
     network_type = tables.Column("network_type",
                                  verbose_name=_("Network Type"))
     neutron_net = tables.Column("neutron_net",
-                                verbose_name=_("Neutron Net ID"))
+                                verbose_name=_("Neutron Net"))
     neutron_subnet = tables.Column("neutron_subnet",
-                                   verbose_name=_("Neutron Subnet ID"))
+                                   verbose_name=_("Neutron Subnet"))
     segmentation_id = tables.Column("segmentation_id",
                                     verbose_name=_("Segmentation Id"))
     status = tables.Column("status", verbose_name=_("Status"),
@@ -148,7 +150,7 @@ class ShareNetworkTable(tables.DataTable):
                            status_choices=STATUS_CHOICES)
 
     def get_object_display(self, share_network):
-        return share_network.name
+        return share_network.name or str(share_network.id)
 
     def get_object_id(self, share_network):
         return str(share_network.id)

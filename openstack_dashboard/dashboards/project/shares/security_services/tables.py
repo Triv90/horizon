@@ -29,6 +29,7 @@ class Create(tables.LinkAction):
 class Delete(tables.DeleteAction):
     data_type_singular = _("Security Service")
     data_type_plural = _("Security Services")
+    policy_rules = (("share", "security_service:delete"),)
 
     def delete(self, request, obj_id):
         manila.security_service_delete(request, obj_id)
@@ -39,6 +40,7 @@ class Edit(tables.LinkAction):
     verbose_name = _("Edit Security Service")
     url = "horizon:project:shares:update_security_service"
     classes = ("ajax-modal", "btn-create")
+    policy_rules = (("share", "security_service:update"),)
 
 
 class SecurityServiceTable(tables.DataTable):
@@ -51,7 +53,7 @@ class SecurityServiceTable(tables.DataTable):
     sid = tables.Column("sid", verbose_name=_("Sid"))
 
     def get_object_display(self, security_service):
-        return security_service.name
+        return security_service.name or str(security_service.id)
 
     def get_object_id(self, security_service):
         return str(security_service.id)
