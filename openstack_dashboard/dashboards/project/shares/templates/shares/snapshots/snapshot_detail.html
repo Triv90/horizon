@@ -3,7 +3,7 @@
 {% block title %}{% trans "Snapshot Details" %}{% endblock %}
 
 {% block page_header %}
-  {% include "horizon/common/_page_header.html" with title=_("Snapshot Details: ")|add:snapshot.name|default:_("Snapshot Details:") %}
+  {% include "horizon/common/_page_header.html" with title=_("Snapshot Details: ")|add:snapshot_display_name|default:_("Snapshot Details:") %}
 {% endblock page_header %}
 
 {% block main %}

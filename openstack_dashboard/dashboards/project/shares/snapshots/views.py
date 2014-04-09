@@ -42,7 +42,10 @@ class SnapshotDetailView(tabs.TabView):
 
     def get_context_data(self, **kwargs):
         context = super(SnapshotDetailView, self).get_context_data(**kwargs)
-        context["snapshot"] = self.get_data()
+        snapshot = self.get_data()
+        snapshot_display_name = snapshot.name or snapshot.id
+        context["snapshot"] = snapshot
+        context["snapshot_display_name"] = snapshot_display_name
         return context
 
     @memoized.memoized_method
