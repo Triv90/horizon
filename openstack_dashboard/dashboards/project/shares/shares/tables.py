@@ -160,7 +160,7 @@ class AddRule(tables.LinkAction):
     verbose_name = _("Add rule")
     url = 'horizon:project:shares:rule_add'
     classes = ("ajax-modal", "btn-create")
-    #policy_rules = (("share", "share:create"),)
+    policy_rules = (("share", "share:allow_access"),)
 
     def allowed(self, request, share=None):
         share = manila.share_get(request, self.table.kwargs['share_id'])
@@ -174,7 +174,7 @@ class DeleteRule(tables.DeleteAction):
     data_type_singular = _("Rule")
     data_type_plural = _("Rules")
     action_past = _("Scheduled deletion of %(data_type)s")
-    #policy_rules = (("share", "share:delete"),)
+    policy_rules = (("share", "share:deny_access"),)
 
     def delete(self, request, obj_id):
         obj = self.table.get_object_by_id(obj_id)
