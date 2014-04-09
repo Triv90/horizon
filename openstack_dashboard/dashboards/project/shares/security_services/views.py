@@ -28,10 +28,10 @@ from horizon import tabs
 from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.project.shares.security_services import\
     forms as sec_services_forms
-from openstack_dashboard.dashboards.project.shares.share_networks import forms\
-    as share_net_forms
 from openstack_dashboard.dashboards.project.shares.security_services \
     import tabs as security_services_tabs
+from openstack_dashboard.dashboards.project.shares.share_networks import forms\
+    as share_net_forms
 
 
 class UpdateView(forms.ModalFormView):

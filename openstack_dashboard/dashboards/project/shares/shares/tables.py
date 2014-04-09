@@ -45,7 +45,6 @@ class DeleteShare(tables.DeleteAction):
         return {"project_id": project_id}
 
     def delete(self, request, obj_id):
-        obj = self.table.get_object_by_id(obj_id)
         try:
             manila.share_delete(request, obj_id)
         except Exception:
@@ -177,8 +176,6 @@ class DeleteRule(tables.DeleteAction):
     policy_rules = (("share", "share:deny_access"),)
 
     def delete(self, request, obj_id):
-        obj = self.table.get_object_by_id(obj_id)
-        name = self.table.get_object_display(obj)
         try:
             manila.share_deny(request, self.table.kwargs['share_id'], obj_id)
         except Exception:
@@ -216,7 +213,8 @@ class RulesTable(tables.DataTable):
 
 
 def get_share_network(share):
-    return share.share_network_name if share.share_network_name != "None" else None
+    name = share.share_network_name
+    return name if name != "None" else None
 
 
 class SharesTable(SharesTableBase):
