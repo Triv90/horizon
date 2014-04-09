@@ -3,7 +3,7 @@
 {% block title %}{% trans "Share Details" %}{% endblock %}
 
 {% block page_header %}
-  {% include "horizon/common/_page_header.html" with title=_("Share Network Details: ")|add:share_network.name|default:_("Share Network Details:") %}
+  {% include "horizon/common/_page_header.html" with title=_("Share Network Details: ")|add:share_network_display_name|default:_("Share Network Details:") %}
 {% endblock page_header %}
 
 {% block main %}

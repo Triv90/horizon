@@ -63,7 +63,10 @@ class Detail(tabs.TabView):
 
     def get_context_data(self, **kwargs):
         context = super(Detail, self).get_context_data(**kwargs)
-        context["share_network"] = self.get_data()
+        share_network = self.get_data()
+        share_network_display_name = share_network.name or share_network.id
+        context["share_network"] = share_network
+        context["share_network_display_name"] = share_network_display_name
         return context
 
     def get_data(self):
