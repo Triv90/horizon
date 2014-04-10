@@ -73,10 +73,18 @@ class Detail(tabs.TabView):
         try:
             share_net_id = self.kwargs['share_network_id']
             share_net = manila.share_network_get(self.request, share_net_id)
-            share_net.neutron_net = neutron.network_get(
-                self.request, share_net.neutron_net_id)
-            share_net.neutron_subnet = neutron.subnet_get(
-                self.request, share_net.neutron_subnet_id)
+            try:
+                share_net.neutron_net = neutron.network_get(
+                    self.request, share_net.neutron_net_id).name_or_id
+            except neutron.neutron_client.exceptions.NeutronClientException:
+                share_net.neutron_net = _("Invalid(%s)")\
+                                        % share_net.neutron_net_id
+            try:
+                share_net.neutron_subnet = neutron.subnet_get(
+                    self.request, share_net.neutron_subnet_id).name_or_id
+            except neutron.neutron_client.exceptions.NeutronClientException:
+                share_net.neutron_subnet = _("Invalid(%s)")\
+                                        % share_net.neutron_subnet_id
             share_net.sec_services = \
                 manila.share_network_security_service_list(self.request,
                                                            share_net_id)
