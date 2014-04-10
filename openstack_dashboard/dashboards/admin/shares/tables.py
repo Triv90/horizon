@@ -129,7 +129,7 @@ class SnapshotsTable(tables.DataTable):
 class DeleteSecurityService(tables.DeleteAction):
     data_type_singular = _("Security Service")
     data_type_plural = _("Security Services")
-    #policy_rules = (("volume", "volume_extension:types_manage"),)
+    policy_rules = (("share", "security_service:delete"),)
 
     def delete(self, request, obj_id):
         manila.security_service_delete(request, obj_id)
@@ -138,7 +138,7 @@ class DeleteSecurityService(tables.DeleteAction):
 class DeleteShareNetwork(tables.DeleteAction):
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
-    #policy_rules = (("volume", "volume_extension:types_manage"),)
+    policy_rules = (("share", "share_network:delete"),)
 
     def delete(self, request, obj_id):
         manila.share_network_delete(request, obj_id)
@@ -179,6 +179,7 @@ class DeactivateShareNetwork(tables.BatchAction):
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
     verbose_name = _("Activate Share Network")
+    policy_rules = (("share", "share_network:deactivate"),)
 
     def action(self, request, obj_id):
         manila.share_network_deactivate(request, obj_id)
