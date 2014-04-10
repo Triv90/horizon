@@ -191,6 +191,18 @@ class DeactivateShareNetwork(tables.BatchAction):
         return share.status == "ACTIVE"
 
 
+class UpdateShareNetworkRow(tables.Row):
+    ajax = True
+
+    def get_data(self, request, share_net_id):
+        share_net = manila.share_network_get(request, share_net_id)
+        share_net.neutron_net = neutron.network_get(
+            request, share_net.neutron_net_id).name_or_id
+        share_net.neutron_subnet = neutron.subnet_get(
+            request, share_net.neutron_subnet_id).name_or_id
+        return share_net
+
+
 class ShareNetworkTable(tables.DataTable):
     name = tables.Column("name",
                          verbose_name=_("Name"),
@@ -199,16 +211,16 @@ class ShareNetworkTable(tables.DataTable):
     ip_version = tables.Column("ip_version", verbose_name=_("IP Version"))
     network_type = tables.Column("network_type",
                                  verbose_name=_("Network Type"))
-    neutron_net_id = tables.Column("neutron_net_id",
+    neutron_net_id = tables.Column("neutron_net",
                                    verbose_name=_("Neutron Net"))
-    neutron_subnet_id = tables.Column("neutron_subnet_id",
+    neutron_subnet_id = tables.Column("neutron_subnet",
                                    verbose_name=_("Neutron Subnet"))
     segmentation_id = tables.Column("segmentation_id",
                                     verbose_name=_("Segmentation Id"))
     status = tables.Column("status", verbose_name=_("Status"))
 
     def get_object_display(self, share_network):
-        return share_network.name
+        return share_network.name or str(share_network.id)
 
     def get_object_id(self, share_network):
         return str(share_network.id)
@@ -217,4 +229,5 @@ class ShareNetworkTable(tables.DataTable):
         name = "share_networks"
         verbose_name = _("Share Networks")
         table_actions = ()
+        row_class = UpdateShareNetworkRow
         row_actions = (DeleteShareNetwork, DeactivateShareNetwork, )
