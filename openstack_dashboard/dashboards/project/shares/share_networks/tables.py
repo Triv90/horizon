@@ -85,7 +85,7 @@ class Deactivate(tables.BatchAction):
     action_past = _("Deactivating")
     data_type_singular = _("Share Network")
     data_type_plural = _("Share Networks")
-    verbose_name = _("Activate Share Network")
+    verbose_name = _("Deactivate Share Network")
     policy_rules = (("share", "share_network:deactivate"),)
 
     def action(self, request, obj_id):
