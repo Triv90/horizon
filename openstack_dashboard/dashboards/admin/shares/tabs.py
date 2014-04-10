@@ -65,13 +65,6 @@ class SharesTab(tabs.TableTab):
     slug = "shares_tab"
     template_name = "horizon/common/_detail_table.html"
 
-    def _set_id_if_nameless(self, shares):
-        for share in shares:
-            # It is possible to create a volume with no name through the
-            # EC2 API, use the ID in those cases.
-            if not share.name:
-                share.name = share.id
-
     def get_shares_data(self):
         try:
             shares = manila.share_list(self.request,
@@ -82,7 +75,6 @@ class SharesTab(tabs.TableTab):
             return []
         #Gather our tenants to correlate against IDs
         utils.set_tenant_name_to_objects(self.request, shares)
-        self._set_id_if_nameless(shares)
         return shares
 
 
