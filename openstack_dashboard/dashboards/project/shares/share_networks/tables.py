@@ -158,7 +158,7 @@ class ShareNetworkTable(tables.DataTable):
     class Meta:
         name = "share_networks"
         verbose_name = _("Share Networks")
-        table_actions = (Create, )
+        table_actions = (Create, Deactivate, Delete, )
         status_columns = ["status"]
         row_class = UpdateRow
         row_actions = (EditShareNetwork, Delete,
