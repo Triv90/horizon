@@ -122,7 +122,15 @@ SERVICE_CATALOG = [
          {"region": "RegionOne",
           "adminURL": "http://admin.trove.example.com:8779/v1.0",
           "publicURL": "http://public.trove.example.com:8779/v1.0",
-          "internalURL": "http://int.trove.example.com:8779/v1.0"}]}
+          "internalURL": "http://int.trove.example.com:8779/v1.0"}]},
+    {"type": "share",
+     "name": "Manila",
+     "endpoints_links": [],
+     "endpoints": [
+         {"region": "RegionOne",
+          "adminURL": "http://admin.manila.example.com:8776/v1.0",
+          "publicURL": "http://public.manila.example.com:8776/v1.0",
+          "internalURL": "http://int.manila.example.com:8776/v1.0"}]}
 ]
 
 

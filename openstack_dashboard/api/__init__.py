@@ -64,4 +64,5 @@ __all__ = [
     "ceilometer",
     "trove",
     "vpn",
+    "manila"
 ]
