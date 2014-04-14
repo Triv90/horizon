@@ -1,0 +1,122 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
+# Copyright 2012 United States Government as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All Rights Reserved.
+#
+# Copyright 2012 Nebula, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import django
+from django.conf import settings
+from django.core.urlresolvers import reverse
+from django.forms import widgets
+from django import http
+from manilaclient import exceptions as manila_client_exc
+import mock
+
+from mox import IsA  # noqa
+
+from openstack_dashboard import api
+from openstack_dashboard.api import manila
+from openstack_dashboard.dashboards.project.shares import test_data
+from openstack_dashboard.dashboards.project.shares \
+    .security_services import tables
+from openstack_dashboard.test import helpers as test
+from openstack_dashboard.usage import quotas
+
+
+SHARE_INDEX_URL = reverse('horizon:project:shares:index')
+
+
+class VolumeViewTests(test.TestCase):
+
+    def test_create_security_service(self):
+        formData = {'name': u'new_sec_service',
+                    'description': u'This is test security service',
+                    'method': u'CreateForm',
+                    'dns_ip': '1.2.3.4',
+                    'sid': 'SomeUser',
+                    'password': 'safepass',
+                    'type': 'ldap',
+                    }
+
+        api.manila.security_service_create = mock.Mock()
+        url = reverse('horizon:project:shares:create_security_service')
+        res = self.client.post(url, formData)
+
+    def test_delete_security_service(self):
+        security_service = test_data.sec_service
+
+        formData = {'action':
+                    'security_services__delete__%s' % security_service.id}
+
+        api.manila.security_service_delete = mock.Mock()
+        api.manila.security_service_list = mock.Mock(
+            return_value=[test_data.sec_service])
+        url = reverse('horizon:project:shares:index')
+        res = self.client.post(url, formData)
+        api.manila.security_service_delete.assert_called_with(
+            mock.ANY, test_data.sec_service.id)
+        self.assertRedirectsNoFollow(res, SHARE_INDEX_URL)
+
+    def test_detail_view(self):
+        sec_service = test_data.sec_service
+        api.manila.security_service_get = mock.Mock(return_value=sec_service)
+
+        url = reverse('horizon:project:shares:security_service_detail',
+                      args=[sec_service.id])
+        res = self.client.get(url)
+
+        self.assertContains(res, "<h2>Security Service Details: %s</h2>"
+                                 % sec_service.name,
+                            1, 200)
+        self.assertContains(res, "<dd>%s</dd>" % sec_service.name, 1, 200)
+        self.assertContains(res, "<dd>%s</dd>" % sec_service.id, 1, 200)
+        self.assertContains(res, "<dd>%s</dd>" % sec_service.sid, 1, 200)
+        self.assertContains(res, "<dd>%s</dd>" % sec_service.server, 1, 200)
+        self.assertContains(res, "<dd>%s</dd>" % sec_service.dns_ip, 1, 200)
+        self.assertContains(res, "<dd>%s</dd>" % sec_service.domain, 1, 200)
+
+        self.assertNoMessages()
+
+    def test_detail_view_with_exception(self):
+        sec_service = test_data.sec_service
+
+        def raise_exc(*args, **kwargs):
+            raise manila_client_exc.NotFound(500)
+
+        api.manila.security_service_get = mock.Mock(
+            side_effect=raise_exc)
+        
+        url = reverse('horizon:project:shares:security_service_detail',
+                      args=[sec_service.id])
+        res = self.client.get(url)
+
+        self.assertRedirectsNoFollow(res, SHARE_INDEX_URL)
+
+    def test_update_security_service(self):
+        sec_service = test_data.sec_service
+
+        api.manila.security_service_get = mock.Mock(return_value=sec_service)
+        api.manila.security_service_update = mock.Mock()
+
+        formData = {'method': 'UpdateForm',
+                    'name': sec_service.name,
+                    'description': sec_service.description}
+
+        url = reverse('horizon:project:shares:update_security_service',
+                      args=[sec_service.id])
+        res = self.client.post(url, formData)
+        self.assertRedirectsNoFollow(res, SHARE_INDEX_URL)

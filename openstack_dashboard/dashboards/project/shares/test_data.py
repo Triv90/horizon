@@ -96,6 +96,7 @@ sec_service = security_services.SecurityService(
      'type': 'active_directory',
      'name': 'test-sec-service',
      'description': 'test security service',
+     'domain': 'testdomain',
      })
 
 # Quota Sets
