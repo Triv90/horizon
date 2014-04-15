@@ -18,24 +18,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import django
-from django.conf import settings
 from django.core.urlresolvers import reverse
-from django.forms import widgets
-from django import http
-from manilaclient import exceptions as manila_client_exc
 import mock
 
-from mox import IsA  # noqa
 from neutronclient.client import exceptions
 
 from openstack_dashboard import api
-from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.project.shares import test_data
-from openstack_dashboard.dashboards.project.shares \
-    .share_networks import tables
 from openstack_dashboard.test import helpers as test
-from openstack_dashboard.usage import quotas
 
 
 SHARE_INDEX_URL = reverse('horizon:project:shares:index')
@@ -109,38 +99,37 @@ class ShareNetworksViewTests(test.TestCase):
 
         self.assertNoMessages()
 
-    #def test_detail_view_network_not_found(self):
-    #    share_net = test_data.active_share_network
-    #    sec_service = test_data.sec_service
-    #    api.manila.share_network_get = mock.Mock(return_value=share_net)
-    #    api.manila.share_network_security_service_list = mock.Mock(
-    #        return_value=[sec_service])
-    #
-    #    def raise_neutron_exc(*args, **kwargs):
-    #        import pdb;pdb.set_trace()
-    #        raise exceptions.NeutronClientException('fake', 500)
-    #    api.neutron.network_get = mock.Mock(
-    #        side_effect=raise_neutron_exc)
-    #    api.neutron.subnet_get = mock.Mock(
-    #        side_effect=raise_neutron_exc)
-    #
-    #    url = reverse('horizon:project:shares:share_network_detail',
-    #                  args=[share_net.id])
-    #    res = self.client.get(url)
-    #    self.assertContains(res, "<h2>Share Network Details: %s</h2>"
-    #                             % share_net.name,
-    #                        1, 200)
-    #    self.assertContains(res, "<dd>%s</dd>" % share_net.name, 1, 200)
-    #    self.assertContains(res, "<dd>%s</dd>" % share_net.id, 1, 200)
-    #    self.assertContains(res, "<dd>%s</dd>" % share_net.neutron_net_id,
-    #                        1, 200)
-    #    self.assertContains(res, "<dd>%s</dd>" % share_net.neutron_subnet_id,
-    #                        1, 200)
-    #    self.assertContains(res, "<a href=\"/project/shares/security_service"
-    #                             "/%s\">%s</a>" % (sec_service.id,
-    #                                               sec_service.name), 1, 200)
-    #
-    #    self.assertNoMessages()
+    def test_detail_view_network_not_found(self):
+        share_net = test_data.active_share_network
+        sec_service = test_data.sec_service
+        api.manila.share_network_get = mock.Mock(return_value=share_net)
+        api.manila.share_network_security_service_list = mock.Mock(
+            return_value=[sec_service])
+
+        def raise_neutron_exc(*args, **kwargs):
+            raise exceptions.NeutronClientException('fake', 500)
+        api.neutron.network_get = mock.Mock(
+            side_effect=raise_neutron_exc)
+        api.neutron.subnet_get = mock.Mock(
+            side_effect=raise_neutron_exc)
+
+        url = reverse('horizon:project:shares:share_network_detail',
+                      args=[share_net.id])
+        res = self.client.get(url)
+        self.assertContains(res, "<h2>Share Network Details: %s</h2>"
+                                 % share_net.name,
+                            1, 200)
+        self.assertContains(res, "<dd>%s</dd>" % share_net.name, 1, 200)
+        self.assertContains(res, "<dd>%s</dd>" % share_net.id, 1, 200)
+        self.assertContains(res, "<dd>Unknown</dd>", 2, 200)
+        self.assertNotContains(res, "<dd>%s</dd>" % share_net.neutron_net_id)
+        self.assertNotContains(res,
+                               "<dd>%s</dd>" % share_net.neutron_subnet_id)
+        self.assertContains(res, "<a href=\"/project/shares/security_service"
+                                 "/%s\">%s</a>" % (sec_service.id,
+                                                   sec_service.name), 1, 200)
+
+        self.assertNoMessages()
 
     def test_update_share_network(self):
         share_net = test_data.inactive_share_network
