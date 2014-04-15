@@ -11,6 +11,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import collections
 
 from manilaclient.v1 import security_services
 from manilaclient.v1 import shares
@@ -27,7 +28,7 @@ share = shares.Share(shares.ShareManager(None),
                      {'id': "11023e92-8008-4c8b-8059-7f2293ff3887",
                       'status': 'available',
                       'size': 40,
-                      'name': 'Volume name',
+                      'name': 'Share name',
                       'description': 'Volume description',
                       'share_proto': 'NFS',
                       'created_at': '2014-01-27 10:30:00',
@@ -58,6 +59,14 @@ other_share = shares.Share(shares.ShareManager(None),
                             'volume_type': None,
                             'share_network_id':
                                 '7f3d1c33-8d00-4511-29df-a2def31f3b5d'})
+
+rule = collections.namedtuple('Access', ['access_type', 'access_to', 'status',
+                                         'id'])
+
+sid_rule = rule('sid', 'someuser', 'active',
+                '10837072-c49e-11e3-bd64-60a44c371189')
+ip_rule = rule('ip', '1.1.1.1', 'active',
+               '2cc8e2f8-c49e-11e3-bd64-60a44c371189')
 
 snapshot = share_snapshots.ShareSnapshot(
     share_snapshots.ShareSnapshotManager(None),
