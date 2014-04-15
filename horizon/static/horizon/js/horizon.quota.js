@@ -407,7 +407,7 @@ horizon.Quota = {
     }
 
     $(this.user_value_form_inputs).each(function(index, element) {
-      $(element).on('keyup', function(evt) {
+      $(element).on('keyup change', function(evt) {
         var progress_element = $('div[data-progress-indicator-for=' + $(evt.target).attr('id') + ']');
         var integers_in_input = $(evt.target).val().match(/\d+/g);
         var user_integer;

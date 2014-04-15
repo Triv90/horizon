@@ -3,7 +3,7 @@
 {% block title %}{% trans "Security Service Details" %}{% endblock %}
 
 {% block page_header %}
-  {% include "horizon/common/_page_header.html" with title=_("Security Service Details: ")|add:sec_service.name|default:_("Security Service Details:") %}
+  {% include "horizon/common/_page_header.html" with title=_("Security Service Details: ")|add:sec_service_display_name|default:_("Security Service Details:") %}
 {% endblock page_header %}
 
 {% block main %}

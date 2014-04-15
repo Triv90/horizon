@@ -18,12 +18,14 @@ from openstack_dashboard.dashboards.project.shares.security_services \
     import views as project_sec_services_views
 from openstack_dashboard.dashboards.project.shares.share_networks\
     import views as project_share_net_views
+from openstack_dashboard.dashboards.project.shares.snapshots\
+    import views as project_snapshot_views
 
 urlpatterns = patterns('',
     url(r'^$', views.IndexView.as_view(), name='index'),
     url(r'^(?P<share_id>[^/]+)/$', views.DetailView.as_view(), name='detail'),
     url(r'^snapshots/(?P<snapshot_id>[^/]+)$',
-        views.SnapshotDetailView.as_view(),
+        project_snapshot_views.SnapshotDetailView.as_view(),
         name='snapshot-detail'),
     url(r'^share_networks/(?P<share_network_id>[^/]+)$',
         project_share_net_views.Detail.as_view(),

@@ -18,6 +18,7 @@ from horizon import exceptions
 from horizon import tabs
 
 from openstack_dashboard.api import manila
+from openstack_dashboard.api import neutron
 
 from openstack_dashboard.dashboards.admin.\
     shares.tables import SharesTable
@@ -44,6 +45,11 @@ class SnapshotsTab(tabs.TableTab):
     def get_snapshots_data(self):
         try:
             snapshots = manila.share_snapshot_list(self.request)
+            shares = manila.share_list(self.request)
+            share_names = dict([(share.id, share.name or share.id)
+                                for share in shares])
+            for snapshot in snapshots:
+                snapshot.share = share_names.get(snapshot.share_id)
         except Exception:
             msg = _("Unable to retrieve snapshot list.")
             exceptions.handle(self.request, msg)
@@ -59,13 +65,6 @@ class SharesTab(tabs.TableTab):
     slug = "shares_tab"
     template_name = "horizon/common/_detail_table.html"
 
-    def _set_id_if_nameless(self, shares):
-        for share in shares:
-            # It is possible to create a volume with no name through the
-            # EC2 API, use the ID in those cases.
-            if not share.name:
-                share.name = share.id
-
     def get_shares_data(self):
         try:
             shares = manila.share_list(self.request,
@@ -76,7 +75,6 @@ class SharesTab(tabs.TableTab):
             return []
         #Gather our tenants to correlate against IDs
         utils.set_tenant_name_to_objects(self.request, shares)
-        self._set_id_if_nameless(shares)
         return shares
 
 
@@ -109,6 +107,15 @@ class ShareNetworkTab(tabs.TableTab):
         try:
             share_networks = manila.share_network_list(
                 self.request, detailed=True, search_opts={'all_tenants': True})
+            neutron_net_names = dict([(net.id, net.name) for net in
+                                      neutron.network_list(self.request)])
+            neutron_subnet_names = dict([(net.id, net.name) for net in
+                                      neutron.subnet_list(self.request)])
+            for share in share_networks:
+                share.neutron_net = neutron_net_names.get(
+                    share.neutron_net_id) or share.neutron_net_id
+                share.neutron_subnet = neutron_subnet_names.get(
+                    share.neutron_subnet_id) or share.neutron_net_id
         except Exception:
             share_networks = []
             exceptions.handle(self.request,

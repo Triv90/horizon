@@ -32,6 +32,8 @@
   <dl>
     <dt>{% trans "Size" %}</dt>
     <dd>{{ share.size }} {% trans "GB" %}</dd>
+    <dt>{% trans "Protocol" %}</dt>
+    <dd>{{ share.share_proto }}</dd>
     <dt>{% trans "Created" %}</dt>
     <dd>{{ share.created_at|parse_date }}</dd>
   </dl>

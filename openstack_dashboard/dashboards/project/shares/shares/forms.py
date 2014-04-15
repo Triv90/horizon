@@ -214,7 +214,8 @@ class AddRule(forms.SelfHandlingForm):
             messages.success(request, message)
             return True
         except Exception:
-            redirect = reverse("horizon:project:shares:index")
+            redirect = reverse("horizon:project:shares:manage_rules",
+                               args=[self.initial['share_id']])
             exceptions.handle(request,
                               _('Unable to add rule.'),
                               redirect=redirect)

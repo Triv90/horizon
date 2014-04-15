@@ -60,7 +60,10 @@ class DetailView(tabs.TabView):
 
     def get_context_data(self, **kwargs):
         context = super(DetailView, self).get_context_data(**kwargs)
-        context["share"] = self.get_data()
+        share = self.get_data()
+        share_display_name = share.name or share.id
+        context["share"] = share
+        context["share_display_name"] = share_display_name
         return context
 
     @memoized.memoized_method
@@ -160,6 +163,8 @@ class ManageRulesView(tables.DataTableView):
 
     def get_context_data(self, **kwargs):
         context = super(ManageRulesView, self).get_context_data(**kwargs)
+        share = manila.share_get(self.request, self.kwargs['share_id'])
+        context['share_display_name'] = share.name or share.id
         context["share"] = self.get_data()
         return context
 

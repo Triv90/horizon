@@ -63,17 +63,26 @@ class Detail(tabs.TabView):
 
     def get_context_data(self, **kwargs):
         context = super(Detail, self).get_context_data(**kwargs)
-        context["share_network"] = self.get_data()
+        share_network = self.get_data()
+        share_network_display_name = share_network.name or share_network.id
+        context["share_network"] = share_network
+        context["share_network_display_name"] = share_network_display_name
         return context
 
     def get_data(self):
         try:
             share_net_id = self.kwargs['share_network_id']
             share_net = manila.share_network_get(self.request, share_net_id)
-            share_net.neutron_net = neutron.network_get(
-                self.request, share_net.neutron_net_id)
-            share_net.neutron_subnet = neutron.subnet_get(
-                self.request, share_net.neutron_subnet_id)
+            try:
+                share_net.neutron_net = neutron.network_get(
+                    self.request, share_net.neutron_net_id).name_or_id
+            except neutron.neutron_client.exceptions.NeutronClientException:
+                share_net.neutron_net = _("Unknown")
+            try:
+                share_net.neutron_subnet = neutron.subnet_get(
+                    self.request, share_net.neutron_subnet_id).name_or_id
+            except neutron.neutron_client.exceptions.NeutronClientException:
+                share_net.neutron_subnet = _("Unknown")
             share_net.sec_services = \
                 manila.share_network_security_service_list(self.request,
                                                            share_net_id)
