@@ -70,7 +70,7 @@ snapshot = share_snapshots.ShareSnapshot(
 
 inactive_share_network = share_networks.ShareNetwork(
     share_networks.ShareNetworkManager(None),
-    {'id': '7f3d1c33-8d00-4511-29df-a2def31f3b5d',
+    {'id': '6f3d1c33-8d00-4511-29df-a2def31f3b5d',
      'name': 'test_share_net',
      'description': 'test share network',
      'status': 'INACTIVE',

@@ -18,29 +18,21 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import django
-from django.conf import settings
 from django.core.urlresolvers import reverse
-from django.forms import widgets
-from django import http
 from manilaclient import exceptions as manila_client_exc
 import mock
 
 from mox import IsA  # noqa
 
 from openstack_dashboard import api
-from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.project.shares import test_data
-from openstack_dashboard.dashboards.project.shares \
-    .security_services import tables
 from openstack_dashboard.test import helpers as test
-from openstack_dashboard.usage import quotas
 
 
 SHARE_INDEX_URL = reverse('horizon:project:shares:index')
 
 
-class VolumeViewTests(test.TestCase):
+class SecurityServicesViewTests(test.TestCase):
 
     def test_create_security_service(self):
         formData = {'name': u'new_sec_service',
@@ -49,12 +41,20 @@ class VolumeViewTests(test.TestCase):
                     'dns_ip': '1.2.3.4',
                     'sid': 'SomeUser',
                     'password': 'safepass',
+                    'confirm_password': 'safepass',
                     'type': 'ldap',
+                    'domain': 'TEST',
+                    'server': 'testserver'
                     }
 
         api.manila.security_service_create = mock.Mock()
         url = reverse('horizon:project:shares:create_security_service')
         res = self.client.post(url, formData)
+        del formData['method']
+        del formData['confirm_password']
+        api.manila.security_service_create.assert_called_with(
+            mock.ANY, **formData)
+        self.assertRedirectsNoFollow(res, SHARE_INDEX_URL)
 
     def test_delete_security_service(self):
         security_service = test_data.sec_service
