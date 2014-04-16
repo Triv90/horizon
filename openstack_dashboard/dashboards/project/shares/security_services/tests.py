@@ -99,7 +99,7 @@ class SecurityServicesViewTests(test.TestCase):
 
         api.manila.security_service_get = mock.Mock(
             side_effect=raise_exc)
-        
+
         url = reverse('horizon:project:shares:security_service_detail',
                       args=[sec_service.id])
         res = self.client.get(url)

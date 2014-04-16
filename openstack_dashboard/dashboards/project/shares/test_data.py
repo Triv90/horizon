@@ -1,4 +1,4 @@
-# Copyright 2014 NetApp, Inc.
+# Copyright (c) 2014 NetApp, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,15 +14,14 @@
 import collections
 
 from manilaclient.v1 import security_services
-from manilaclient.v1 import shares
 from manilaclient.v1 import share_networks
 from manilaclient.v1 import share_snapshots
+from manilaclient.v1 import shares
 from manilaclient.v1 import quotas
 
 from openstack_dashboard import api
 from openstack_dashboard.usage import quotas as usage_quotas
 
-from openstack_dashboard.test.test_data import utils
 
 share = shares.Share(shares.ShareManager(None),
                      {'id': "11023e92-8008-4c8b-8059-7f2293ff3887",

@@ -1,10 +1,4 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2012 United States Government as represented by the
-# Administrator of the National Aeronautics and Space Administration.
-# All Rights Reserved.
-#
-# Copyright 2012 Nebula, Inc.
+# Copyright 2014 NetApp, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -100,7 +94,8 @@ class SnapshotSnapshotViewTests(test.TestCase):
                     'name': snapshot.name,
                     'description': snapshot.description}
 
-        url = reverse('horizon:project:shares:edit_snapshot', args=[snapshot.id])
+        url = reverse('horizon:project:shares:edit_snapshot',
+                      args=[snapshot.id])
         res = self.client.post(url, formData)
         self.assertRedirectsNoFollow(
             res, SHARE_INDEX_URL + '?tab=share_tabs__snapshots_tab')

@@ -1,10 +1,4 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2012 United States Government as represented by the
-# Administrator of the National Aeronautics and Space Administration.
-# All Rights Reserved.
-#
-# Copyright 2012 Nebula, Inc.
+# Copyright (c) 2014 NetApp, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -21,12 +15,9 @@
 from django.core.urlresolvers import reverse
 import mock
 
-from neutronclient.client import exceptions
-
 from openstack_dashboard import api
 from openstack_dashboard.dashboards.project.shares import test_data
 from openstack_dashboard.test import helpers as test
-from openstack_dashboard.usage import quotas
 
 
 SHARE_INDEX_URL = reverse('horizon:project:shares:index')
@@ -52,7 +43,7 @@ class ShareViewTests(test.TestCase):
         res = self.client.post(url, formData)
         api.manila.share_create.assert_called_with(
             mock.ANY, formData['size'], formData['name'],
-            formData['description'],  formData['type'], snapshot_id=None,
+            formData['description'], formData['type'], snapshot_id=None,
             share_network_id=share_net.id, metadata={})
 
     def test_create_share_from_snapshot(self):
@@ -79,7 +70,7 @@ class ShareViewTests(test.TestCase):
         res = self.client.post(url, formData)
         api.manila.share_create.assert_called_with(
             mock.ANY, formData['size'], formData['name'],
-            formData['description'],  formData['type'],
+            formData['description'], formData['type'],
             snapshot_id=snapshot.id,
             share_network_id=share_net.id, metadata={})
         self.assertRedirectsNoFollow(res, SHARE_INDEX_URL)
@@ -106,7 +97,7 @@ class ShareViewTests(test.TestCase):
         res = self.client.post(url, formData)
         api.manila.share_create.assert_called_with(
             mock.ANY, formData['size'], formData['name'],
-            formData['description'],  formData['type'], snapshot_id=None,
+            formData['description'], formData['type'], snapshot_id=None,
             share_network_id=share_net.id, metadata={})
 
     def test_delete_share(self):
