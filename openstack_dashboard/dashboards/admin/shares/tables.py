@@ -30,6 +30,39 @@ def get_size(share):
     return _("%sGB") % share.size
 
 
+class CreateVolumeType(tables.LinkAction):
+    name = "create"
+    verbose_name = _("Create Volume Type")
+    url = "horizon:admin:shares:create_type"
+    classes = ("ajax-modal", "btn-create")
+    policy_rules = (("share", "share_extension:types_manage"),)
+
+
+class DeleteVolumeType(tables.DeleteAction):
+    data_type_singular = _("Volume Type")
+    data_type_plural = _("Volume Types")
+    policy_rules = (("share", "share_extension:types_manage"),)
+
+    def delete(self, request, obj_id):
+        manila.volume_type_delete(request, obj_id)
+
+
+class VolumeTypesTable(tables.DataTable):
+    name = tables.Column("name", verbose_name=_("Name"))
+
+    def get_object_display(self, vol_type):
+        return vol_type.name
+
+    def get_object_id(self, vol_type):
+        return str(vol_type.id)
+
+    class Meta:
+        name = "volume_types"
+        verbose_name = _("Volume Types")
+        table_actions = (CreateVolumeType, DeleteVolumeType, )
+        row_actions = (DeleteVolumeType, )
+
+
 class SharesFilterAction(tables.FilterAction):
 
     def filter(self, table, shares, filter_string):
@@ -53,7 +86,8 @@ class SharesTable(shares_tables.SharesTable):
         row_class = shares_tables.UpdateRow
         table_actions = (shares_tables.DeleteShare, SharesFilterAction)
         row_actions = (shares_tables.DeleteShare,)
-        columns = ('tenant', 'host', 'name', 'size', 'status', 'protocol',)
+        columns = ('tenant', 'host', 'name', 'size', 'status', 'volume_type',
+                   'protocol',)
 
 
 class SnapshotShareNameColumn(tables.Column):

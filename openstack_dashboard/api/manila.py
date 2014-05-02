@@ -75,10 +75,11 @@ def share_get(request, share_id):
 
 
 def share_create(request, size, name, description, proto, snapshot_id=None,
-                 metadata=None, share_network_id=None):
+                 metadata=None, share_network_id=None, volume_type=None):
     return manilaclient(request).shares.create(proto, size, name=name,
             description=description, share_network_id=share_network_id,
-            snapshot_id=snapshot_id, metadata=metadata)
+            snapshot_id=snapshot_id, metadata=metadata,
+            volume_type=volume_type, )
 
 
 def share_delete(request, share_id):
@@ -219,6 +220,18 @@ def default_quota_get(request, tenant_id):
 
 def default_quota_update(request, **kwargs):
     manilaclient(request).quota_classes.update(DEFAULT_QUOTA_NAME, **kwargs)
+
+
+def volume_type_list(request):
+    return manilaclient(request).volume_types.list()
+
+
+def volume_type_create(request, name):
+    return manilaclient(request).volume_types.create(name)
+
+
+def volume_type_delete(request, volume_type_id):
+    return manilaclient(request).volume_types.delete(volume_type_id)
 
 
 def tenant_absolute_limits(request):

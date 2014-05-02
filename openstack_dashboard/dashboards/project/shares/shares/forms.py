@@ -41,6 +41,7 @@ class CreateForm(forms.SelfHandlingForm):
     size = forms.IntegerField(min_value=1, label=_("Size (GB)"))
     share_network = forms.ChoiceField(label=_("Share Network"),
                                       required=False)
+    volume_type = forms.ChoiceField(label=_("Volume Type"), required=False)
     share_source_type = forms.ChoiceField(label=_("Share Source"),
                                           required=False,
                                           widget=forms.Select(attrs={
@@ -60,6 +61,9 @@ class CreateForm(forms.SelfHandlingForm):
         super(CreateForm, self).__init__(request, *args, **kwargs)
         share_types = ('NFS', 'CIFS')
         share_networks = manila.share_network_list(request)
+        volume_types = manila.volume_type_list(request)
+        self.fields['volume_type'].choices = [("", "")] + \
+            [(vt.name, vt.name) for vt in volume_types]
         self.fields['type'].choices = [(type, type)
                                        for type in share_types]
         self.fields['share_network'].choices = \
@@ -160,6 +164,7 @@ class CreateForm(forms.SelfHandlingForm):
                                         data['type'],
                                         share_network_id=share_network,
                                         snapshot_id=snapshot_id,
+                                        volume_type=data['volume_type'],
                                         metadata=metadata)
             message = _('Creating share "%s"') % data['name']
             messages.success(request, message)

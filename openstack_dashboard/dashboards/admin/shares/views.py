@@ -22,10 +22,13 @@ from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
+from horizon import forms
 from horizon import tabs
 from horizon.utils import memoized
 
 from openstack_dashboard.api import manila
+from openstack_dashboard.dashboards.admin.shares \
+    import forms as project_forms
 from openstack_dashboard.dashboards.admin.shares \
     import tabs as project_tabs
 
@@ -40,3 +43,12 @@ class IndexView(tabs.TabbedTableView, share_views.ShareTableMixIn):
 
 class DetailView(share_views.DetailView):
     template_name = "admin/shares/detail.html"
+
+
+class CreateVolumeTypeView(forms.ModalFormView):
+    form_class = project_forms.CreateVolumeType
+    template_name = 'admin/shares/create_volume_type.html'
+    success_url = 'horizon:admin:shares:index'
+
+    def get_success_url(self):
+        return reverse(self.success_url)

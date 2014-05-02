@@ -29,6 +29,20 @@ from openstack_dashboard.api import manila
 from openstack_dashboard.api import neutron
 
 
+class CreateVolumeType(forms.SelfHandlingForm):
+    name = forms.CharField(max_length="255", label=_("Name"))
+
+    def handle(self, request, data):
+        try:
+            volume_type = manila.volume_type_create(request, data['name'])
+            messages.success(request, _('Successfully created volume type: %s')
+                                      % data['name'])
+            return volume_type
+        except Exception:
+            exceptions.handle(request, _('Unable to create volume type.'))
+            return False
+
+
 class CreateSecurityService(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Name"))
     dns_ip = forms.CharField(max_length="15", label=_("DNS IP"))

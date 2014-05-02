@@ -33,4 +33,6 @@ urlpatterns = patterns('',
     url(r'^security_services/(?P<sec_service_id>[^/]+)$',
         project_sec_services_views.Detail.as_view(),
         name='security_service_detail'),
+    url(r'^create_type$', views.CreateVolumeTypeView.as_view(),
+        name='create_type'),
 )

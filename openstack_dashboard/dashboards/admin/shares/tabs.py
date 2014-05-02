@@ -28,6 +28,8 @@ from openstack_dashboard.dashboards.admin.\
     shares.tables import SecurityServiceTable
 from openstack_dashboard.dashboards.admin.\
     shares.tables import ShareNetworkTable
+from openstack_dashboard.dashboards.admin.\
+    shares.tables import VolumeTypesTable
 from openstack_dashboard.dashboards.admin.shares import utils
 
 
@@ -78,6 +80,23 @@ class SharesTab(tabs.TableTab):
         return shares
 
 
+class VolumeTypesTab(tabs.TableTab):
+    table_classes = (VolumeTypesTable, )
+    name = _("Volume types")
+    slug = "volume_types_tab"
+    template_name = "horizon/common/_detail_table.html"
+
+    def get_volume_types_data(self):
+        try:
+            volume_types = manila.volume_type_list(self.request)
+        except Exception:
+            volume_types = []
+            exceptions.handle(self.request,
+                              _("Unable to retrieve volume types"))
+        utils.set_tenant_name_to_objects(self.request, volume_types)
+        return volume_types
+
+
 class SecurityServiceTab(tabs.TableTab):
     table_classes = (SecurityServiceTable,)
     name = _("Security Services")
@@ -126,7 +145,8 @@ class ShareNetworkTab(tabs.TableTab):
 
 class ShareTabs(tabs.TabGroup):
     slug = "share_tabs"
-    tabs = (SharesTab, SnapshotsTab, ShareNetworkTab, SecurityServiceTab,)
+    tabs = (SharesTab, SnapshotsTab, ShareNetworkTab, SecurityServiceTab,
+            VolumeTypesTab, )
     sticky = True
 
 
