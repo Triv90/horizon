@@ -17,10 +17,13 @@
 <div class="right">
   <h3>{% trans "Description" %}:</h3>
   <p>{% blocktrans %}
-    The volume type defines the characteristics of a volume.
-    It usually maps to a set of capabilities of the storage back-end driver to be used for this volume.
-    Examples: "Performance", "SSD", "Backup", etc.
-    {% endblocktrans %}</p>
+    The volume type defines the characteristics of a volume backend.
+    {% endblocktrans %}
+    <br /><br /><strong>Extra specs</strong> field:<br />
+    {% trans "One line - one action. Empty strings will be ignored." %}<br />
+    {% trans "To add extra-specs use:" %}<br />
+    <i>key=value</i><br />
+  </p>
 </div>
 {% endblock %}
 

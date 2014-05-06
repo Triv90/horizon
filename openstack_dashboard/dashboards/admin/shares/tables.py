@@ -47,6 +47,20 @@ class DeleteVolumeType(tables.DeleteAction):
         manila.volume_type_delete(request, obj_id)
 
 
+class UpdateVolumeType(tables.LinkAction):
+    name = "update volume type"
+    verbose_name = _("Update Volume Type")
+    url = "horizon:admin:shares:update_type"
+    classes = ("ajax-modal", "btn-create")
+    policy_rules = (("share", "share_extension:types_manage"),)
+
+    def get_policy_target(self, request, datum=None):
+        project_id = None
+        if datum:
+            project_id = getattr(datum, "os-share-tenant-attr:tenant_id", None)
+        return {"project_id": project_id}
+
+
 class VolumeTypesTable(tables.DataTable):
     name = tables.Column("name", verbose_name=_("Name"))
 
@@ -60,7 +74,7 @@ class VolumeTypesTable(tables.DataTable):
         name = "volume_types"
         verbose_name = _("Volume Types")
         table_actions = (CreateVolumeType, DeleteVolumeType, )
-        row_actions = (DeleteVolumeType, )
+        row_actions = (UpdateVolumeType, DeleteVolumeType, )
 
 
 class SharesFilterAction(tables.FilterAction):

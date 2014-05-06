@@ -19,12 +19,12 @@ Admin views for managing shares.
 """
 
 from django.core.urlresolvers import reverse
+from django.core.urlresolvers import reverse_lazy
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
 from horizon import forms
 from horizon import tabs
-from horizon.utils import memoized
 
 from openstack_dashboard.api import manila
 from openstack_dashboard.dashboards.admin.shares \
@@ -52,3 +52,33 @@ class CreateVolumeTypeView(forms.ModalFormView):
 
     def get_success_url(self):
         return reverse(self.success_url)
+
+
+class UpdateVolumeTypeView(forms.ModalFormView):
+    form_class = project_forms.UpdateVolumeType
+    template_name = "admin/shares/update_volume_type.html"
+    success_url = reverse_lazy("horizon:admin:shares:index")
+
+    def get_object(self):
+        if not hasattr(self, "_object"):
+            vt_id = self.kwargs["volume_type_id"]
+            try:
+                self._object = manila.volume_type_get(self.request, vt_id)
+            except Exception:
+                msg = _("Unable to retrieve volume_type.")
+                url = reverse("horizon:admin:shares:index")
+                exceptions.handle(self.request, msg, redirect=url)
+        return self._object
+
+    def get_context_data(self, **kwargs):
+        context = super(UpdateVolumeTypeView, self).get_context_data(**kwargs)
+        context["volume_type"] = self.get_object()
+        return context
+
+    def get_initial(self):
+        volume_type = self.get_object()
+        return {
+            "id": self.kwargs["volume_type_id"],
+            "name": volume_type.name,
+            "extra_specs": volume_type.extra_specs,
+        }

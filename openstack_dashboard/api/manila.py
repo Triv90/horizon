@@ -226,12 +226,30 @@ def volume_type_list(request):
     return manilaclient(request).volume_types.list()
 
 
+def volume_type_get(request, volume_type_id):
+    return manilaclient(request).volume_types.get(volume_type_id)
+
+
 def volume_type_create(request, name):
     return manilaclient(request).volume_types.create(name)
 
 
 def volume_type_delete(request, volume_type_id):
     return manilaclient(request).volume_types.delete(volume_type_id)
+
+
+def volume_type_get_extra_specs(request, volume_type_id):
+    return manilaclient(request).volume_types.get(volume_type_id).get_keys()
+
+
+def volume_type_set_extra_specs(request, volume_type_id, extra_specs):
+    return manilaclient(request).volume_types.get(
+        volume_type_id).set_keys(extra_specs)
+
+
+def volume_type_unset_extra_specs(request, volume_type_id, key):
+    return manilaclient(request).volume_types.get(
+        volume_type_id).unset_keys(key)
 
 
 def tenant_absolute_limits(request):
