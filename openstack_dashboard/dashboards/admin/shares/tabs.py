@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
@@ -93,7 +94,12 @@ class VolumeTypesTab(tabs.TableTab):
             volume_types = []
             exceptions.handle(self.request,
                               _("Unable to retrieve volume types"))
-        utils.set_tenant_name_to_objects(self.request, volume_types)
+        # Convert dict with extra specs to friendly view
+        for vt in volume_types:
+            es_str = ""
+            for k, v in vt.extra_specs.iteritems():
+                es_str += "%s=%s\r\n<br />" % (k, v)
+            vt.extra_specs = mark_safe(es_str)
         return volume_types
 
 

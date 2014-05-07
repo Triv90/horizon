@@ -61,8 +61,17 @@ class UpdateVolumeType(tables.LinkAction):
         return {"project_id": project_id}
 
 
+class VolumeTypesFilterAction(tables.FilterAction):
+
+    def filter(self, table, volume_types, filter_string):
+        """Naive case-insensitive search."""
+        q = filter_string.lower()
+        return [vt for vt in volume_types if q in vt.name.lower()]
+
+
 class VolumeTypesTable(tables.DataTable):
     name = tables.Column("name", verbose_name=_("Name"))
+    extra_specs = tables.Column("extra_specs", verbose_name=_("Extra specs"), )
 
     def get_object_display(self, vol_type):
         return vol_type.name
@@ -73,7 +82,8 @@ class VolumeTypesTable(tables.DataTable):
     class Meta:
         name = "volume_types"
         verbose_name = _("Volume Types")
-        table_actions = (CreateVolumeType, DeleteVolumeType, )
+        table_actions = (CreateVolumeType, DeleteVolumeType,
+                         VolumeTypesFilterAction, )
         row_actions = (UpdateVolumeType, DeleteVolumeType, )
 
 
