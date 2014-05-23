@@ -147,14 +147,6 @@ def share_network_update(request, share_net_id, name=None, description=None):
         name=name, description=description)
 
 
-def share_network_activate(request, share_net_id):
-    return manilaclient(request).share_networks.activate(share_net_id)
-
-
-def share_network_deactivate(request, share_net_id):
-    return manilaclient(request).share_networks.deactivate(share_net_id)
-
-
 def share_network_delete(request, share_network_id):
     return manilaclient(request).share_networks.delete(share_network_id)
 

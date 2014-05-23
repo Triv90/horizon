@@ -204,7 +204,9 @@ class DeleteShareNetwork(tables.DeleteAction):
 
     def allowed(self, request, obj):
         if obj:
-            return obj.status in ["INACTIVE", "ERROR"]
+            # NOTE: set always True until statuses become used
+            #return obj.status in ["INACTIVE", "ERROR"]
+            return True
         return True
 
 
@@ -229,26 +231,6 @@ class SecurityServiceTable(tables.DataTable):
         verbose_name = _("Security Services")
         table_actions = (DeleteSecurityService,)
         row_actions = (DeleteSecurityService,)
-
-
-class DeactivateShareNetwork(tables.BatchAction):
-    name = "deactivate"
-    action_present = _("Deactivate")
-    action_past = _("Deactivating")
-    data_type_singular = _("Share Network")
-    data_type_plural = _("Share Networks")
-    verbose_name = _("Deactivate Share Network")
-    policy_rules = (("share", "share_network:deactivate"),)
-
-    def action(self, request, obj_id):
-        manila.share_network_deactivate(request, obj_id)
-
-    def allowed(self, request, share=None):
-        shares = manila.share_list(request,
-                                   search_opts={'share_network_id': share.id})
-        if shares:
-            return False
-        return share.status == "ACTIVE"
 
 
 class UpdateShareNetworkRow(tables.Row):
@@ -277,7 +259,8 @@ class ShareNetworkTable(tables.DataTable):
                                    verbose_name=_("Neutron Subnet"))
     segmentation_id = tables.Column("segmentation_id",
                                     verbose_name=_("Segmentation Id"))
-    status = tables.Column("status", verbose_name=_("Status"))
+    # NOTE: removed statuses until it become used
+    #status = tables.Column("status", verbose_name=_("Status"))
 
     def get_object_display(self, share_network):
         return share_network.name or str(share_network.id)
@@ -288,6 +271,6 @@ class ShareNetworkTable(tables.DataTable):
     class Meta:
         name = "share_networks"
         verbose_name = _("Share Networks")
-        table_actions = ()
+        table_actions = (DeleteShareNetwork, )
         row_class = UpdateShareNetworkRow
-        row_actions = (DeleteShareNetwork, DeactivateShareNetwork, )
+        row_actions = (DeleteShareNetwork, )

@@ -39,8 +39,6 @@ class Create(forms.SelfHandlingForm):
                                            'class': 'switchable',
                                            'data-slug': 'net'
                                        }))
-    #neutron_subnet_id = forms.ChoiceField(choices=(),
-    #                                      label=_("Neutron Subnet ID"))
     description = forms.CharField(widget=forms.Textarea,
                                   label=_("Description"), required=False)
 
@@ -76,17 +74,21 @@ class Create(forms.SelfHandlingForm):
             # Remove any new lines in the public key
             share_net_id = data['neutron_net_id']
             subnet_key = 'subnet-choices-%s' % share_net_id
-            data['neutron_subnet_id'] = data[subnet_key]
-            share_network = manila.share_network_create(
-                request, name=data['name'], description=data['description'],
-                neutron_net_id=data['neutron_net_id'],
-                neutron_subnet_id=data[subnet_key])
+            send_data = {
+                'name': data['name'],
+            }
+            if subnet_key in data:
+                send_data['neutron_subnet_id'] = data[subnet_key]
+            if data['neutron_net_id'].strip():
+                send_data['neutron_net_id'] = data['neutron_net_id']
+            if data['description']:
+                send_data['description'] = data['description']
+            share_network = manila.share_network_create(request, **send_data)
             messages.success(request, _('Successfully created share'
-                                        ' network: %s') % data['name'])
+                                        ' network: %s') % send_data['name'])
             return share_network
         except Exception:
-            exceptions.handle(request,
-                              _('Unable to create share network.'))
+            exceptions.handle(request, _('Unable to create share network.'))
             return False
 
 

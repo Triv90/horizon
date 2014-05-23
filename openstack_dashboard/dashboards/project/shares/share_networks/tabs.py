@@ -37,11 +37,11 @@ class ShareNetworkTab(tabs.TableTab):
                                       neutron.network_list(self.request)])
             neutron_subnet_names = dict([(net.id, net.name) for net in
                                       neutron.subnet_list(self.request)])
-            for share in share_networks:
-                share.neutron_net = neutron_net_names.get(
-                    share.neutron_net_id) or share.neutron_net_id
-                share.neutron_subnet = neutron_subnet_names.get(
-                    share.neutron_subnet_id) or share.neutron_net_id
+            for sn in share_networks:
+                sn.neutron_net = neutron_net_names.get(
+                    sn.neutron_net_id) or sn.neutron_net_id or "-"
+                sn.neutron_subnet = neutron_subnet_names.get(
+                    sn.neutron_subnet_id) or sn.neutron_subnet_id or "-"
         except Exception:
             share_networks = []
             exceptions.handle(self.request,

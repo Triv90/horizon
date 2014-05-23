@@ -49,57 +49,10 @@ class Delete(tables.DeleteAction):
 
     def allowed(self, request, obj=None):
         if obj:
-            return obj.status in DELETABLE_STATES
+            # NOTE: leave it True until statuses become used
+            #return obj.status in DELETABLE_STATES
+            return True
         return True
-
-
-class Activate(tables.BatchAction):
-    name = "activate"
-    action_present = _("Activate")
-    action_past = _("Activating")
-    data_type_singular = _("Share Network")
-    data_type_plural = _("Share Networks")
-    verbose_name = _("Activate Share Network")
-    policy_rules = (("share", "share_network:activate"),)
-
-    def action(self, request, obj_id):
-        manila.share_network_activate(request, obj_id)
-
-    def allowed(self, request, share=None):
-        usages = quotas.tenant_quota_usages(request)
-        if usages['share_networks']['available'] <= 0:
-            if "disabled" not in self.classes:
-                self.classes = [c for c in self.classes] + ['disabled']
-                self.verbose_name = string_concat(self.verbose_name, ' ',
-                                                  _("(Quota exceeded)"))
-        else:
-            self.verbose_name = _("Activate Share Network")
-            classes = [c for c in self.classes if c != "disabled"]
-            self.classes = classes
-        return share.status == "INACTIVE"
-
-
-class Deactivate(tables.BatchAction):
-    name = "deactivate"
-    action_present = _("Deactivate")
-    action_past = _("Deactivating")
-    data_type_singular = _("Share Network")
-    data_type_plural = _("Share Networks")
-    verbose_name = _("Deactivate Share Network")
-    policy_rules = (("share", "share_network:deactivate"),)
-
-    def action(self, request, obj_id):
-        manila.share_network_deactivate(request, obj_id)
-
-    def get_success_url(self, request):
-        return reverse('horizon:project:shares:index')
-
-    def allowed(self, request, share=None):
-        shares = manila.share_list(request,
-                                   search_opts={'share_network_id': share.id})
-        if shares:
-            return False
-        return share.status == "ACTIVE"
 
 
 class EditShareNetwork(tables.LinkAction):
@@ -111,7 +64,9 @@ class EditShareNetwork(tables.LinkAction):
 
     def allowed(self, request, obj_id):
         sn = manila.share_network_get(request, obj_id)
-        return sn.status in EDITABLE_STATES
+        #return sn.status in EDITABLE_STATES
+        # NOTE: leave it always True, until statuses become used
+        return True
 
 
 class UpdateRow(tables.Row):
@@ -145,9 +100,10 @@ class ShareNetworkTable(tables.DataTable):
                                    verbose_name=_("Neutron Subnet"))
     segmentation_id = tables.Column("segmentation_id",
                                     verbose_name=_("Segmentation Id"))
-    status = tables.Column("status", verbose_name=_("Status"),
-                           status=True,
-                           status_choices=STATUS_CHOICES)
+    # NOTE: disable status column until it become used
+    #status = tables.Column("status", verbose_name=_("Status"),
+    #                       status=True,
+    #                       status_choices=STATUS_CHOICES)
 
     def get_object_display(self, share_network):
         return share_network.name or str(share_network.id)
@@ -158,8 +114,7 @@ class ShareNetworkTable(tables.DataTable):
     class Meta:
         name = "share_networks"
         verbose_name = _("Share Networks")
-        table_actions = (Create, Deactivate, Delete, )
-        status_columns = ["status"]
+        table_actions = (Create, Delete, )
+        #status_columns = ["status"]
         row_class = UpdateRow
-        row_actions = (EditShareNetwork, Delete,
-                       Activate, Deactivate)
+        row_actions = (EditShareNetwork, Delete, )
