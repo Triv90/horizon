@@ -75,11 +75,12 @@ def share_get(request, share_id):
 
 
 def share_create(request, size, name, description, proto, snapshot_id=None,
-                 metadata=None, share_network_id=None, volume_type=None):
-    return manilaclient(request).shares.create(proto, size, name=name,
-            description=description, share_network_id=share_network_id,
-            snapshot_id=snapshot_id, metadata=metadata,
-            volume_type=volume_type, )
+                 metadata=None, share_network=None, volume_type=None):
+    return manilaclient(request).shares.create(
+        proto, size, name=name, description=description,
+        share_network=share_network, snapshot_id=snapshot_id,
+        metadata=metadata, volume_type=volume_type,
+    )
 
 
 def share_delete(request, share_id):
@@ -161,20 +162,21 @@ def security_service_get(request, sec_service_id, search_opts=None):
 
 
 def security_service_create(request, type, dns_ip=None, server=None,
-                            domain=None, sid=None, password=None, name=None,
+                            domain=None, user=None, password=None, name=None,
                             description=None):
     return manilaclient(request).security_services.create(
-        type, dns_ip=dns_ip, server=server, domain=domain, sid=sid,
+        type, dns_ip=dns_ip, server=server, domain=domain, user=user,
         password=password, name=name, description=description)
 
 
 def security_service_update(request, security_service_id, dns_ip=None,
                             server=None,
-                            domain=None, sid=None, password=None, name=None,
+                            domain=None, user=None, password=None, name=None,
                             description=None):
-    return manilaclient(request).security_services.update(security_service_id,
-        dns_ip=dns_ip, server=server, domain=domain, sid=sid,
-        password=password, name=name, description=description)
+    return manilaclient(request).security_services.update(
+        security_service_id, dns_ip=dns_ip, server=server, domain=domain,
+        user=user, password=password, name=name, description=description,
+    )
 
 
 def security_service_delete(request, security_service_id):

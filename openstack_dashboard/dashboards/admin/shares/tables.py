@@ -218,7 +218,7 @@ class SecurityServiceTable(tables.DataTable):
     dns_ip = tables.Column("dns_ip", verbose_name=_("DNS IP"))
     server = tables.Column("server", verbose_name=_("Server"))
     domain = tables.Column("domain", verbose_name=_("Domain"))
-    sid = tables.Column("sid", verbose_name=_("Sid"))
+    user = tables.Column("user", verbose_name=_("Sid"))
 
     def get_object_display(self, security_service):
         return security_service.name

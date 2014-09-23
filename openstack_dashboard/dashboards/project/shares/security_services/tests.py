@@ -39,7 +39,7 @@ class SecurityServicesViewTests(test.TestCase):
                     'description': u'This is test security service',
                     'method': u'CreateForm',
                     'dns_ip': '1.2.3.4',
-                    'sid': 'SomeUser',
+                    'user': 'SomeUser',
                     'password': 'safepass',
                     'confirm_password': 'safepass',
                     'type': 'ldap',
@@ -84,7 +84,7 @@ class SecurityServicesViewTests(test.TestCase):
                             1, 200)
         self.assertContains(res, "<dd>%s</dd>" % sec_service.name, 1, 200)
         self.assertContains(res, "<dd>%s</dd>" % sec_service.id, 1, 200)
-        self.assertContains(res, "<dd>%s</dd>" % sec_service.sid, 1, 200)
+        self.assertContains(res, "<dd>%s</dd>" % sec_service.user, 1, 200)
         self.assertContains(res, "<dd>%s</dd>" % sec_service.server, 1, 200)
         self.assertContains(res, "<dd>%s</dd>" % sec_service.dns_ip, 1, 200)
         self.assertContains(res, "<dd>%s</dd>" % sec_service.domain, 1, 200)

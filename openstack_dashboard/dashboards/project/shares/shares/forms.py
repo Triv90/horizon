@@ -162,7 +162,7 @@ class CreateForm(forms.SelfHandlingForm):
                                         data['name'],
                                         data['description'],
                                         data['type'],
-                                        share_network_id=share_network,
+                                        share_network=share_network,
                                         snapshot_id=snapshot_id,
                                         volume_type=data['volume_type'],
                                         metadata=metadata)
@@ -206,7 +206,7 @@ class UpdateForm(forms.SelfHandlingForm):
 class AddRule(forms.SelfHandlingForm):
     type = forms.ChoiceField(label=_("Type"),
                              required=True,
-                             choices=(('ip', 'ip'), ('sid', 'sid')))
+                             choices=(('ip', 'ip'), ('user', 'user')))
     access_to = forms.CharField(label=_("Access To"), max_length="255",
                                 required=True)
 

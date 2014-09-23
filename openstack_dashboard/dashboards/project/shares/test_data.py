@@ -62,7 +62,7 @@ other_share = shares.Share(shares.ShareManager(None),
 rule = collections.namedtuple('Access', ['access_type', 'access_to', 'status',
                                          'id'])
 
-sid_rule = rule('sid', 'someuser', 'active',
+user_rule = rule('user', 'someuser', 'active',
                 '10837072-c49e-11e3-bd64-60a44c371189')
 ip_rule = rule('ip', '1.1.1.1', 'active',
                '2cc8e2f8-c49e-11e3-bd64-60a44c371189')
@@ -99,7 +99,7 @@ sec_service = security_services.SecurityService(
     {'id': '7f3d1c33-8d10-4511-29df-a2def31f3b5d',
      'server': '1.1.1.1',
      'dns_ip': '2.2.2.2',
-     'sid': 'someuser',
+     'user': 'someuser',
      'password': 'somepass',
      'type': 'active_directory',
      'name': 'test-sec-service',

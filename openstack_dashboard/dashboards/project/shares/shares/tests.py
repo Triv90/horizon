@@ -121,7 +121,7 @@ class ShareViewTests(test.TestCase):
     def test_detail_view(self):
         share_net = test_data.active_share_network
         share = test_data.share
-        rules = [test_data.ip_rule, test_data.sid_rule]
+        rules = [test_data.ip_rule, test_data.user_rule]
         api.manila.share_get = mock.Mock(return_value=share)
         api.manila.share_network_get = mock.Mock(return_value=share_net)
         api.manila.share_rules_list = mock.Mock(return_value=rules)
@@ -160,7 +160,7 @@ class ShareViewTests(test.TestCase):
 
     def test_list_rules(self):
         share = test_data.share
-        rules = [test_data.ip_rule, test_data.sid_rule]
+        rules = [test_data.ip_rule, test_data.user_rule]
         api.manila.share_rules_list = mock.Mock(return_value=rules)
 
         url = reverse('horizon:project:shares:manage_rules', args=[share.id])
@@ -173,7 +173,7 @@ class ShareViewTests(test.TestCase):
         url = reverse('horizon:project:shares:rule_add', args=[share.id])
         api.manila.share_get = mock.Mock(return_value=share)
         api.manila.share_allow = mock.Mock()
-        formData = {'type': 'sid',
+        formData = {'type': 'user',
                     'method': u'CreateForm',
                     'access_to': 'someuser'}
         res = self.client.post(url, formData)
