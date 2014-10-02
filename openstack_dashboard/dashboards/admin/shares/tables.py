@@ -210,6 +210,22 @@ class DeleteShareNetwork(tables.DeleteAction):
         return True
 
 
+class DeleteShareServer(tables.DeleteAction):
+    data_type_singular = _("Share Server")
+    data_type_plural = _("Share Server")
+    policy_rules = (("share", "share_server:delete"),)
+
+    def delete(self, request, obj_id):
+        manila.share_server_delete(request, obj_id)
+
+    def allowed(self, request, obj):
+        if obj:
+            # NOTE: set always True until statuses become used
+            #return obj.status in ["INACTIVE", "ERROR"]
+            return True
+        return True
+
+
 class SecurityServiceTable(tables.DataTable):
     name = tables.Column("name",
                          verbose_name=_("Name"),
@@ -245,6 +261,14 @@ class UpdateShareNetworkRow(tables.Row):
         return share_net
 
 
+class UpdateShareServerRow(tables.Row):
+    ajax = True
+
+    def get_data(self, request, share_serv_id):
+        share_serv = manila.share_server_get(request, share_serv_id)
+        return share_serv
+
+
 class ShareNetworkTable(tables.DataTable):
     name = tables.Column("name",
                          verbose_name=_("Name"),
@@ -274,3 +298,29 @@ class ShareNetworkTable(tables.DataTable):
         table_actions = (DeleteShareNetwork, )
         row_class = UpdateShareNetworkRow
         row_actions = (DeleteShareNetwork, )
+
+
+class ShareServerTable(tables.DataTable):
+    uid = tables.Column("id", verbose_name=_("Id"),
+                        link="horizon:admin:shares:share_server_detail")
+    host = tables.Column("host", verbose_name=_("Host"))
+    tenant = tables.Column("tenant_name", verbose_name=_("Project"))
+    share_net_name = tables.Column("share_network_name",
+                                   verbose_name=_("Share Network Name"))
+    status = tables.Column("status", verbose_name=_("Status"))
+
+    # NOTE: removed statuses until it become used
+    #status = tables.Column("status", verbose_name=_("Status"))
+
+    def get_object_display(self, share_server):
+        return str(share_server.id)
+
+    def get_object_id(self, share_server):
+        return str(share_server.id)
+
+    class Meta:
+        name = "share_servers"
+        verbose_name = _("Share Server")
+        table_actions = (DeleteShareServer, )
+        row_class = UpdateShareServerRow
+        row_actions = (DeleteShareServer, )
