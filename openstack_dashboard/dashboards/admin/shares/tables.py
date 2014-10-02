@@ -10,6 +10,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import six
+
 from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title  # noqa
 from django.utils.translation import ugettext_lazy as _
@@ -103,6 +105,17 @@ class SharesTable(shares_tables.SharesTable):
     host = tables.Column("host", verbose_name=_("Host"))
     tenant = tables.Column("tenant_name", verbose_name=_("Project"))
 
+    def get_share_server_link(share):
+        if hasattr(share, 'share_server_id'):
+            return reverse("horizon:admin:shares:share_server_detail",
+                           args=(share.share_server_id,))
+        else:
+            return None
+
+    share_server = tables.Column("share_server_id",
+                                 verbose_name=_("Share Server"),
+                                 link=get_share_server_link)
+
     class Meta:
         name = "shares"
         verbose_name = _("Shares")
@@ -111,7 +124,7 @@ class SharesTable(shares_tables.SharesTable):
         table_actions = (shares_tables.DeleteShare, SharesFilterAction)
         row_actions = (shares_tables.DeleteShare,)
         columns = ('tenant', 'host', 'name', 'size', 'status', 'volume_type',
-                   'protocol',)
+                   'protocol', 'share_server')
 
 
 class SnapshotShareNameColumn(tables.Column):
@@ -210,6 +223,25 @@ class DeleteShareNetwork(tables.DeleteAction):
         return True
 
 
+class DeleteShareServer(tables.DeleteAction):
+    data_type_singular = _("Share Server")
+    data_type_plural = _("Share Server")
+    policy_rules = (("share", "share_server:delete"),)
+
+    def delete(self, request, obj_id):
+        manila.share_server_delete(request, obj_id)
+
+    def allowed(self, request, share_serv):
+        if share_serv:
+            share_search_opts = {'share_server_id': share_serv.id}
+            shares_list = manila.share_list(request,
+                                            search_opts=share_search_opts)
+            if shares_list:
+                return False
+            return share_serv.status not in ["deleting", "creating"]
+        return True
+
+
 class SecurityServiceTable(tables.DataTable):
     name = tables.Column("name",
                          verbose_name=_("Name"),
@@ -245,6 +277,14 @@ class UpdateShareNetworkRow(tables.Row):
         return share_net
 
 
+class UpdateShareServerRow(tables.Row):
+    ajax = True
+
+    def get_data(self, request, share_serv_id):
+        share_serv = manila.share_server_get(request, share_serv_id)
+        return share_serv
+
+
 class ShareNetworkTable(tables.DataTable):
     name = tables.Column("name",
                          verbose_name=_("Name"),
@@ -274,3 +314,52 @@ class ShareNetworkTable(tables.DataTable):
         table_actions = (DeleteShareNetwork, )
         row_class = UpdateShareNetworkRow
         row_actions = (DeleteShareNetwork, )
+
+class SharesServersFilterAction(tables.FilterAction):
+
+    def filter(self, table, shares, filter_string):
+        """Naive case-insensitive search."""
+        q = filter_string.lower()
+        return [share for share in shares
+                if q in share.name.lower()]
+
+
+class ShareServerTable(tables.DataTable):
+    STATUS_CHOICES = (
+        ("active", True),
+        ("deleting", None),
+        ("creating", None),
+        ("error", False),
+    )
+    uid = tables.Column("id", verbose_name=_("Id"),
+                        link="horizon:admin:shares:share_server_detail")
+    host = tables.Column("host", verbose_name=_("Host"))
+    tenant = tables.Column("tenant_name", verbose_name=_("Project"))
+
+    def get_share_server_link(share_serv):
+        if hasattr(share_serv, 'share_network_id'):
+            return reverse("horizon:admin:shares:share_network_detail",
+                           args=(share_serv.share_network_id,))
+        else:
+            return None
+
+    share_net_name = tables.Column("share_network_name",
+                                   verbose_name=_("Share Network"),
+                                   link=get_share_server_link)
+    status = tables.Column("status", verbose_name=_("Status"),
+                           status=True, filters=(title,),
+                           status_choices=STATUS_CHOICES)
+
+    def get_object_display(self, share_server):
+        return six.text_type(share_server.id)
+
+    def get_object_id(self, share_server):
+        return six.text_type(share_server.id)
+
+    class Meta:
+        name = "share_servers"
+        status_columns = ["status"]
+        verbose_name = _("Share Server")
+        table_actions = (DeleteShareServer, SharesServersFilterAction)
+        row_class = UpdateShareServerRow
+        row_actions = (DeleteShareServer, )

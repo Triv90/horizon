@@ -86,6 +86,11 @@ class Detail(tabs.TabView):
             share_net.sec_services = \
                 manila.share_network_security_service_list(self.request,
                                                            share_net_id)
+            server_search_opts = {'share_network_id': share_net_id}
+            share_servs = manila.share_server_list(
+                self.request,
+                search_opts=server_search_opts)
+            share_net.share_servers = share_servs
         except Exception:
             redirect = reverse('horizon:project:shares:index')
             exceptions.handle(self.request,

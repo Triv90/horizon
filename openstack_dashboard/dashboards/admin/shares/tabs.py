@@ -30,6 +30,8 @@ from openstack_dashboard.dashboards.admin.\
 from openstack_dashboard.dashboards.admin.\
     shares.tables import ShareNetworkTable
 from openstack_dashboard.dashboards.admin.\
+    shares.tables import ShareServerTable
+from openstack_dashboard.dashboards.admin.\
     shares.tables import VolumeTypesTable
 from openstack_dashboard.dashboards.admin.shares import utils
 
@@ -149,10 +151,42 @@ class ShareNetworkTab(tabs.TableTab):
         return share_networks
 
 
+class ShareServerTab(tabs.TableTab):
+    table_classes = (ShareServerTable,)
+    name = _("Share Servers")
+    slug = "share_servers_tab"
+    template_name = "horizon/common/_detail_table.html"
+
+    def get_share_servers_data(self):
+        try:
+            share_servers = manila.share_server_list(
+                self.request)
+        except Exception:
+            share_servers = []
+            exceptions.handle(self.request,
+                              _("Unable to retrieve share servers"))
+        utils.set_tenant_name_to_objects(self.request, share_servers)
+        return share_servers
+
+
+class ShareServerOverviewTab(tabs.Tab):
+    name = _("Overview")
+    slug = "overview"
+    template_name = ("admin/shares/_detail_share_server.html")
+
+    def get_context_data(self, request):
+        return {"share_server": self.tab_group.kwargs['share_server']}
+
+
+class ShareServerDetailTabs(tabs.TabGroup):
+    slug = "share_server_details"
+    tabs = (ShareServerOverviewTab,)
+
+
 class ShareTabs(tabs.TabGroup):
     slug = "share_tabs"
     tabs = (SharesTab, SnapshotsTab, ShareNetworkTab, SecurityServiceTab,
-            VolumeTypesTab, )
+            VolumeTypesTab, ShareServerTab)
     sticky = True
 
 

@@ -82,3 +82,40 @@ class UpdateVolumeTypeView(forms.ModalFormView):
             "name": volume_type.name,
             "extra_specs": volume_type.extra_specs,
         }
+
+class ShareServDetail(tabs.TabView):
+    tab_group_class = project_tabs.ShareServerDetailTabs
+    template_name = 'admin/shares/detail_share_server.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(ShareServDetail, self).get_context_data(**kwargs)
+        share_server = self.get_data()
+        share_server_display_name = share_server.id
+        context["share_server"] = share_server
+        context["share_server_display_name"] = share_server_display_name
+        return context
+
+    def get_data(self):
+        try:
+            share_serv_id = self.kwargs['share_server_id']
+            share_serv = manila.share_server_get(self.request, share_serv_id)
+            share_search_opts = {'share_server_id': share_serv.id}
+            shares_list = manila.share_list(self.request,
+                                            search_opts=share_search_opts)
+            for share in shares_list:
+                share.name_or_id = share.name or share.id
+            share_serv.shares_list = shares_list
+            if not hasattr(share_serv, 'share_network_id'):
+                share_serv.share_network_id = None
+                                                  
+        except Exception:
+            redirect = reverse('horizon:project:shares:index')
+            exceptions.handle(self.request,
+                              _('Unable to retrieve share server details.'),
+                              redirect=redirect)
+        return share_serv
+
+    def get_tabs(self, request, *args, **kwargs):
+        share_server = self.get_data()
+        return self.tab_group_class(request, share_server=share_server,
+                                    **kwargs)
