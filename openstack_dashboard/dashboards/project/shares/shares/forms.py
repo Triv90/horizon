@@ -25,7 +25,6 @@ from django.utils.translation import ugettext_lazy as _
 from horizon import exceptions
 from horizon import forms
 from horizon import messages
-from horizon.utils import fields
 from horizon.utils.memoized import memoized  # noqa
 
 from openstack_dashboard.api import manila
@@ -49,7 +48,7 @@ class CreateForm(forms.SelfHandlingForm):
                                               'data-slug': 'source'}))
     snapshot = forms.ChoiceField(
         label=_("Use snapshot as a source"),
-        widget=fields.SelectWidget(
+        widget=forms.fields.SelectWidget(
             attrs={'class': 'switched',
                    'data-switch-on': 'source',
                    'data-source-snapshot': _('Snapshot')},
