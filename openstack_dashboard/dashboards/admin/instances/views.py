@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -74,11 +72,11 @@ class AdminIndexView(tables.DataTableView):
         instances = []
         marker = self.request.GET.get(
             project_tables.AdminInstancesTable._meta.pagination_param, None)
+        search_opts = self.get_filters({'marker': marker, 'paginate': True})
         try:
             instances, self._more = api.nova.server_list(
                 self.request,
-                search_opts={'marker': marker,
-                             'paginate': True},
+                search_opts=search_opts,
                 all_tenants=True)
         except Exception:
             self._more = False
@@ -86,7 +84,8 @@ class AdminIndexView(tables.DataTableView):
                               _('Unable to retrieve instance list.'))
         if instances:
             try:
-                api.network.servers_update_addresses(self.request, instances)
+                api.network.servers_update_addresses(self.request, instances,
+                                                     all_tenants=True)
             except Exception:
                 exceptions.handle(
                     self.request,
@@ -128,6 +127,15 @@ class AdminIndexView(tables.DataTableView):
                 inst.tenant_name = getattr(tenant, "name", None)
         return instances
 
+    def get_filters(self, filters):
+        filter_field = self.table.get_filter_field()
+        filter_action = self.table._meta._filter_action
+        if filter_action.is_api_filter(filter_field):
+            filter_string = self.table.get_filter_string()
+            if filter_field and filter_string:
+                filters[filter_field] = filter_string
+        return filters
+
 
 class LiveMigrateView(forms.ModalFormView):
     form_class = project_forms.LiveMigrateForm
@@ -143,10 +151,10 @@ class LiveMigrateView(forms.ModalFormView):
     @memoized.memoized_method
     def get_hosts(self, *args, **kwargs):
         try:
-            return api.nova.hypervisor_list(self.request)
+            return api.nova.host_list(self.request)
         except Exception:
             redirect = reverse("horizon:admin:instances:index")
-            msg = _('Unable to retrieve hypervisor information.')
+            msg = _('Unable to retrieve host information.')
             exceptions.handle(self.request, msg, redirect=redirect)
 
     @memoized.memoized_method

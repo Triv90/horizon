@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -21,6 +19,8 @@ from django import forms
 from django import http
 from django import shortcuts
 from django.views import generic
+
+import six
 
 from horizon import exceptions
 from horizon.forms.views import ADD_TO_FIELD_HEADER  # noqa
@@ -103,7 +103,7 @@ class WorkflowView(generic.TemplateView):
         the workflow characteristics
         """
         if self.request.is_ajax():
-            layout = ['modal', 'hide', ]
+            layout = ['modal', ]
             if self.workflow_class.fullscreen:
                 layout += ['fullscreen', ]
         else:
@@ -153,7 +153,7 @@ class WorkflowView(generic.TemplateView):
             if not step.action.is_valid():
                 errors[step.slug] = dict(
                     (field, [unicode(error) for error in errors])
-                    for (field, errors) in step.action.errors.iteritems())
+                    for (field, errors) in six.iteritems(step.action.errors))
         return {
             'has_errors': bool(errors),
             'workflow_slug': workflow.slug,

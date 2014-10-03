@@ -14,8 +14,12 @@
 
 from cinderclient.v1 import availability_zones
 from cinderclient.v1 import quotas
+from cinderclient.v1 import services
 from cinderclient.v1 import volume_snapshots as vol_snaps
+from cinderclient.v1 import volume_types
 from cinderclient.v1 import volumes
+from cinderclient.v2 import qos_specs
+from cinderclient.v2 import volume_backups as vol_backups
 from cinderclient.v2 import volume_snapshots as vol_snaps_v2
 from cinderclient.v2 import volumes as volumes_v2
 
@@ -26,11 +30,41 @@ from openstack_dashboard.test.test_data import utils
 
 
 def data(TEST):
+    TEST.cinder_services = utils.TestDataContainer()
     TEST.cinder_volumes = utils.TestDataContainer()
+    TEST.cinder_volume_backups = utils.TestDataContainer()
+    TEST.cinder_volume_types = utils.TestDataContainer()
+    TEST.cinder_qos_specs = utils.TestDataContainer()
+    TEST.cinder_qos_spec_associations = utils.TestDataContainer()
     TEST.cinder_volume_snapshots = utils.TestDataContainer()
     TEST.cinder_quotas = utils.TestDataContainer()
     TEST.cinder_quota_usages = utils.TestDataContainer()
     TEST.cinder_availability_zones = utils.TestDataContainer()
+
+    # Services
+    service_1 = services.Service(services.ServiceManager(None), {
+        "service": "cinder-scheduler",
+        "status": "enabled",
+        "binary": "cinder-scheduler",
+        "zone": "internal",
+        "state": "up",
+        "updated_at": "2013-07-08T05:21:00.000000",
+        "host": "devstack001",
+        "disabled_reason": None
+    })
+
+    service_2 = services.Service(services.ServiceManager(None), {
+        "service": "cinder-volume",
+        "status": "enabled",
+        "binary": "cinder-volume",
+        "zone": "nova",
+        "state": "up",
+        "updated_at": "2013-07-08T05:20:51.000000",
+        "host": "devstack001",
+        "disabled_reason": None
+    })
+    TEST.cinder_services.add(service_1)
+    TEST.cinder_services.add(service_2)
 
     # Volumes - Cinder v1
     volume = volumes.Volume(volumes.VolumeManager(None),
@@ -62,9 +96,35 @@ def data(TEST):
                              'volume_type': None,
                              'attachments': [{"id": "1", "server_id": '1',
                                             "device": "/dev/hda"}]})
+    volume_with_type = volumes.Volume(volumes.VolumeManager(None),
+                            {'id': "7dcb47fd-07d9-42c2-9647-be5eab799ebe",
+                             'name': 'my_volume2',
+                             'status': 'in-use',
+                             'size': 10,
+                             'display_name': u'my_volume2',
+                             'display_description': '',
+                             'created_at': '2013-04-01 10:30:00',
+                             'volume_type': 'vol_type_2',
+                             'attachments': [{"id": "2", "server_id": '2',
+                                            "device": "/dev/hdb"}]})
+
+    volume.bootable = 'true'
+    nameless_volume.bootable = 'true'
+    other_volume.bootable = 'true'
+
     TEST.cinder_volumes.add(api.cinder.Volume(volume))
     TEST.cinder_volumes.add(api.cinder.Volume(nameless_volume))
     TEST.cinder_volumes.add(api.cinder.Volume(other_volume))
+    TEST.cinder_volumes.add(api.cinder.Volume(volume_with_type))
+
+    vol_type1 = volume_types.VolumeType(volume_types.VolumeTypeManager(None),
+                                        {'id': u'1',
+                                         'name': u'vol_type_1',
+                                         'extra_specs': {'foo': 'bar'}})
+    vol_type2 = volume_types.VolumeType(volume_types.VolumeTypeManager(None),
+                                        {'id': u'2',
+                                         'name': u'vol_type_2'})
+    TEST.cinder_volume_types.add(vol_type1, vol_type2)
 
     # Volumes - Cinder v2
     volume_v2 = volumes_v2.Volume(volumes_v2.VolumeManager(None),
@@ -75,7 +135,10 @@ def data(TEST):
                              'size': 20,
                              'created_at': '2014-01-27 10:30:00',
                              'volume_type': None,
+                             'bootable': 'true',
                              'attachments': []})
+    volume_v2.bootable = 'true'
+
     TEST.cinder_volumes.add(api.cinder.Volume(volume_v2))
 
     snapshot = vol_snaps.Snapshot(vol_snaps.SnapshotManager(None),
@@ -93,8 +156,34 @@ def data(TEST):
                          'status': 'available',
                          'volume_id': '31023e92-8008-4c8b-8059-7f2293ff1234'})
 
+    snapshot.bootable = 'true'
+    snapshot2.bootable = 'true'
+
     TEST.cinder_volume_snapshots.add(api.cinder.VolumeSnapshot(snapshot))
     TEST.cinder_volume_snapshots.add(api.cinder.VolumeSnapshot(snapshot2))
+
+    volume_backup1 = vol_backups.VolumeBackup(vol_backups.
+                                              VolumeBackupManager(None),
+                     {'id': 'a374cbb8-3f99-4c3f-a2ef-3edbec842e31',
+                     'name': 'backup1',
+                     'description': 'volume backup 1',
+                     'size': 10,
+                     'status': 'available',
+                     'container_name': 'volumebackups',
+                     'volume_id': '11023e92-8008-4c8b-8059-7f2293ff3887'})
+
+    volume_backup2 = vol_backups.VolumeBackup(vol_backups.
+                                              VolumeBackupManager(None),
+                     {'id': 'c321cbb8-3f99-4c3f-a2ef-3edbec842e52',
+                     'name': 'backup2',
+                     'description': 'volume backup 2',
+                     'size': 20,
+                     'status': 'available',
+                     'container_name': 'volumebackups',
+                     'volume_id': '31023e92-8008-4c8b-8059-7f2293ff1234'})
+
+    TEST.cinder_volume_backups.add(volume_backup1)
+    TEST.cinder_volume_backups.add(volume_backup2)
 
     # Quota Sets
     quota_data = dict(volumes='1',
@@ -137,3 +226,19 @@ def data(TEST):
                            "maxTotalVolumeGigabytes": 1000,
                            "maxTotalVolumes": 10}}
     TEST.cinder_limits = limits
+
+    # QOS Specs
+    qos_spec1 = qos_specs.QoSSpecs(qos_specs.QoSSpecsManager(None),
+        {"id": "418db45d-6992-4674-b226-80aacad2073c",
+         "name": "high_iops",
+         "consumer": "back-end",
+         "specs": {"minIOPS": "1000", "maxIOPS": '100000'}})
+    qos_spec2 = qos_specs.QoSSpecs(qos_specs.QoSSpecsManager(None),
+        {"id": "6ed7035f-992e-4075-8ed6-6eff19b3192d",
+         "name": "high_bws",
+         "consumer": "back-end",
+         "specs": {"maxBWS": '5000'}})
+
+    TEST.cinder_qos_specs.add(qos_spec1, qos_spec2)
+    vol_type1.associated_qos_spec = qos_spec1.name
+    TEST.cinder_qos_spec_associations.add(vol_type1)

@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -39,9 +37,9 @@ IMAGE_FORMAT_CHOICES = IMAGE_BACKEND_SETTINGS.get('image_formats', [])
 
 
 class CreateImageForm(forms.SelfHandlingForm):
-    name = forms.CharField(max_length="255", label=_("Name"), required=True)
+    name = forms.CharField(max_length=255, label=_("Name"))
     description = forms.CharField(widget=forms.widgets.Textarea(
-        attrs={'class': 'modal-body-fixed-width'}),
+        attrs={'class': 'modal-body-fixed-width', 'rows': 4}),
         label=_("Description"),
         required=False)
 
@@ -54,37 +52,46 @@ class CreateImageForm(forms.SelfHandlingForm):
             'class': 'switchable',
             'data-slug': 'source'}))
 
-    copy_from = forms.CharField(max_length="255",
+    copy_from = forms.CharField(max_length=255,
                                 label=_("Image Location"),
                                 help_text=_("An external (HTTP) URL to load "
                                             "the image from."),
                                 widget=forms.TextInput(attrs={
                                     'class': 'switched',
                                     'data-switch-on': 'source',
-                                    'data-source-url': _('Image Location')}),
+                                    'data-source-url': _('Image Location'),
+                                    'ng-model': 'copyFrom',
+                                    'ng-change':
+                                    'selectImageFormat(copyFrom)'}),
                                 required=False)
     image_file = forms.FileField(label=_("Image File"),
                                  help_text=_("A local image to upload."),
                                  widget=forms.FileInput(attrs={
                                      'class': 'switched',
                                      'data-switch-on': 'source',
-                                     'data-source-file': _('Image File')}),
+                                     'data-source-file': _('Image File'),
+                                     'ng-model': 'imageFile',
+                                     'ng-change':
+                                     'selectImageFormat(imageFile.name)',
+                                     'image-file-on-change': None}),
                                  required=False)
     disk_format = forms.ChoiceField(label=_('Format'),
-                                    required=True,
                                     choices=[],
-                                    widget=forms.Select(attrs={'class':
-                                                               'switchable'}))
-    architecture = forms.CharField(max_length="255", label=_("Architecture"),
+                                    widget=forms.Select(attrs={
+                                        'class': 'switchable',
+                                        'ng-model': 'diskFormat'}))
+    architecture = forms.CharField(max_length=255, label=_("Architecture"),
                                    required=False)
     minimum_disk = forms.IntegerField(label=_("Minimum Disk (GB)"),
+                                    min_value=0,
                                     help_text=_('The minimum disk size'
                                             ' required to boot the'
                                             ' image. If unspecified, this'
                                             ' value defaults to 0'
                                             ' (no minimum).'),
                                     required=False)
-    minimum_ram = forms.IntegerField(label=_("Minimum Ram (MB)"),
+    minimum_ram = forms.IntegerField(label=_("Minimum RAM (MB)"),
+                                    min_value=0,
                                     help_text=_('The minimum memory size'
                                             ' required to boot the'
                                             ' image. If unspecified, this'
@@ -185,33 +192,56 @@ class CreateImageForm(forms.SelfHandlingForm):
 
 class UpdateImageForm(forms.SelfHandlingForm):
     image_id = forms.CharField(widget=forms.HiddenInput())
-    name = forms.CharField(max_length="255", label=_("Name"))
-    description = forms.CharField(widget=forms.widgets.Textarea(),
-                                  label=_("Description"),
-                                  required=False)
-    kernel = forms.CharField(max_length="36", label=_("Kernel ID"),
-                             required=False,
-                             widget=forms.TextInput(
-                                 attrs={'readonly': 'readonly'}
-                             ))
-    ramdisk = forms.CharField(max_length="36", label=_("Ramdisk ID"),
-                              required=False,
-                              widget=forms.TextInput(
-                                  attrs={'readonly': 'readonly'}
-                              ))
-    architecture = forms.CharField(label=_("Architecture"), required=False,
-                                   widget=forms.TextInput(
-                                       attrs={'readonly': 'readonly'}
-                                   ))
-    disk_format = forms.CharField(label=_("Format"),
-                                  widget=forms.TextInput(
-                                      attrs={'readonly': 'readonly'}
-                                  ))
+    name = forms.CharField(max_length=255, label=_("Name"))
+    description = forms.CharField(
+        widget=forms.widgets.Textarea(),
+        label=_("Description"),
+        required=False,
+    )
+    kernel = forms.CharField(
+        max_length=36,
+        label=_("Kernel ID"),
+        required=False,
+        widget=forms.TextInput(attrs={'readonly': 'readonly'}),
+    )
+    ramdisk = forms.CharField(
+        max_length=36,
+        label=_("Ramdisk ID"),
+        required=False,
+        widget=forms.TextInput(attrs={'readonly': 'readonly'}),
+    )
+    architecture = forms.CharField(
+        label=_("Architecture"),
+        required=False,
+        widget=forms.TextInput(attrs={'readonly': 'readonly'}),
+    )
+    disk_format = forms.ChoiceField(
+        label=_("Format"),
+    )
+    minimum_disk = forms.IntegerField(label=_("Minimum Disk (GB)"),
+                                      min_value=0,
+                                      help_text=_('The minimum disk size'
+                                                  ' required to boot the'
+                                                  ' image. If unspecified,'
+                                                  ' this value defaults to'
+                                                  ' 0 (no minimum).'),
+                                      required=False)
+    minimum_ram = forms.IntegerField(label=_("Minimum RAM (MB)"),
+                                     min_value=0,
+                                     help_text=_('The minimum memory size'
+                                                 ' required to boot the'
+                                                 ' image. If unspecified,'
+                                                 ' this value defaults to'
+                                                 ' 0 (no minimum).'),
+                                     required=False)
     public = forms.BooleanField(label=_("Public"), required=False)
     protected = forms.BooleanField(label=_("Protected"), required=False)
 
     def __init__(self, request, *args, **kwargs):
         super(UpdateImageForm, self).__init__(request, *args, **kwargs)
+        self.fields['disk_format'].choices = [(value, name) for value,
+                                              name in IMAGE_FORMAT_CHOICES
+                                              if value]
         if not policy.check((("image", "publicize_image"),), request):
             self.fields['public'].widget = forms.CheckboxInput(
                 attrs={'readonly': 'readonly'})
@@ -230,6 +260,8 @@ class UpdateImageForm(forms.SelfHandlingForm):
                 'disk_format': data['disk_format'],
                 'container_format': container_format,
                 'name': data['name'],
+                'min_ram': (data['minimum_ram'] or 0),
+                'min_disk': (data['minimum_disk'] or 0),
                 'properties': {'description': data['description']}}
         if data['kernel']:
             meta['properties']['kernel_id'] = data['kernel']

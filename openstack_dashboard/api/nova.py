@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -28,7 +26,9 @@ from django.conf import settings
 from django.utils.functional import cached_property  # noqa
 from django.utils.translation import ugettext_lazy as _
 
+from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
+from novaclient.v1_1.contrib import instance_action as nova_instance_action
 from novaclient.v1_1.contrib import list_extensions as nova_list_extensions
 from novaclient.v1_1 import security_group_rules as nova_rules
 from novaclient.v1_1 import security_groups as nova_security_groups
@@ -52,31 +52,33 @@ DEFAULT_QUOTA_NAME = 'default'
 
 
 class VNCConsole(base.APIDictWrapper):
-    """Wrapper for the "console" dictionary returned by the
-    novaclient.servers.get_vnc_console method.
+    """Wrapper for the "console" dictionary.
+
+    Returned by the novaclient.servers.get_vnc_console method.
     """
     _attrs = ['url', 'type']
 
 
 class SPICEConsole(base.APIDictWrapper):
-    """Wrapper for the "console" dictionary returned by the
-    novaclient.servers.get_spice_console method.
+    """Wrapper for the "console" dictionary.
+
+    Returned by the novaclient.servers.get_spice_console method.
     """
     _attrs = ['url', 'type']
 
 
 class RDPConsole(base.APIDictWrapper):
-    """Wrapper for the "console" dictionary returned by the
-    novaclient.servers.get_rdp_console method.
+    """Wrapper for the "console" dictionary.
+
+    Returned by the novaclient.servers.get_rdp_console method.
     """
     _attrs = ['url', 'type']
 
 
 class Server(base.APIResourceWrapper):
-    """Simple wrapper around novaclient.server.Server
+    """Simple wrapper around novaclient.server.Server.
 
-       Preserves the request info so image name can later be retrieved
-
+    Preserves the request info so image name can later be retrieved.
     """
     _attrs = ['addresses', 'attrs', 'id', 'image', 'links',
              'metadata', 'name', 'private_ip', 'public_ip', 'status', 'uuid',
@@ -93,10 +95,11 @@ class Server(base.APIResourceWrapper):
     # TODO(gabriel): deprecate making a call to Glance as a fallback.
     @property
     def image_name(self):
-        import glanceclient.exc as glance_exceptions
-        from openstack_dashboard.api import glance
+        import glanceclient.exc as glance_exceptions  # noqa
+        from openstack_dashboard.api import glance  # noqa
+
         if not self.image:
-            return "(not found)"
+            return "-"
         if hasattr(self.image, 'name'):
             return self.image.name
         if 'name' in self.image:
@@ -106,7 +109,7 @@ class Server(base.APIResourceWrapper):
                 image = glance.image_get(self.request, self.image['id'])
                 return image.name
             except glance_exceptions.ClientException:
-                return "(not found)"
+                return "-"
 
     @property
     def internal_name(self):
@@ -117,8 +120,27 @@ class Server(base.APIResourceWrapper):
         return getattr(self, 'OS-EXT-AZ:availability_zone', "")
 
 
+class Hypervisor(base.APIDictWrapper):
+    """Simple wrapper around novaclient.hypervisors.Hypervisor."""
+
+    _attrs = ['manager', '_loaded', '_info', 'hypervisor_hostname', 'id',
+              'servers']
+
+    @property
+    def servers(self):
+        # if hypervisor doesn't have servers, the attribute is not present
+        servers = []
+        try:
+            servers = self._apidict.servers
+        except Exception:
+            pass
+
+        return servers
+
+
 class NovaUsage(base.APIResourceWrapper):
     """Simple wrapper around contrib/simple_usage.py."""
+
     _attrs = ['start', 'server_usages', 'stop', 'tenant_id',
              'total_local_gb_usage', 'total_memory_mb_usage',
              'total_vcpus_usage', 'total_hours']
@@ -160,9 +182,11 @@ class NovaUsage(base.APIResourceWrapper):
 
 
 class SecurityGroup(base.APIResourceWrapper):
-    """Wrapper around novaclient.security_groups.SecurityGroup which wraps its
-    rules in SecurityGroupRule objects and allows access to them.
+    """Wrapper around novaclient.security_groups.SecurityGroup.
+
+    Wraps its rules in SecurityGroupRule objects and allows access to them.
     """
+
     _attrs = ['id', 'name', 'description', 'tenant_id']
 
     @cached_property
@@ -176,6 +200,7 @@ class SecurityGroup(base.APIResourceWrapper):
 
 class SecurityGroupRule(base.APIResourceWrapper):
     """Wrapper for individual rules in a SecurityGroup."""
+
     _attrs = ['id', 'ip_protocol', 'from_port', 'to_port', 'ip_range', 'group']
 
     def __unicode__(self):
@@ -287,9 +312,24 @@ class SecurityGroupManager(network_base.SecurityGroupManager):
             for group in groups_to_remove:
                 self.client.servers.remove_security_group(instance_id, group)
                 num_groups_to_modify -= 1
-        except Exception:
-            raise Exception(_('Failed to modify %d instance security groups.')
-                            % num_groups_to_modify)
+        except nova_exceptions.ClientException as err:
+            LOG.error(_("Failed to modify %(num_groups_to_modify)d instance "
+                        "security groups: %(err)s") %
+                      dict(num_groups_to_modify=num_groups_to_modify,
+                           err=err))
+            # reraise novaclient.exceptions.ClientException, but with
+            # a sanitized error message so we don't risk exposing
+            # sensitive information to the end user. This has to be
+            # novaclient.exceptions.ClientException, not just
+            # Exception, since the former is recognized as a
+            # "recoverable" exception by horizon, and therefore the
+            # error message is passed along to the end user, while
+            # Exception is swallowed alive by horizon and a gneric
+            # error message is given to the end user
+            raise nova_exceptions.ClientException(
+                err.code,
+                _("Failed to modify %d instance security groups") %
+                num_groups_to_modify)
         return True
 
 
@@ -302,10 +342,13 @@ class FlavorExtraSpec(object):
 
 
 class FloatingIp(base.APIResourceWrapper):
-    _attrs = ['id', 'ip', 'fixed_ip', 'port_id', 'instance_id', 'pool']
+    _attrs = ['id', 'ip', 'fixed_ip', 'port_id', 'instance_id',
+              'instance_type', 'pool']
 
     def __init__(self, fip):
         fip.__setattr__('port_id', fip.instance_id)
+        fip.__setattr__('instance_type',
+                        'compute' if fip.instance_id else None)
         super(FloatingIp, self).__init__(fip)
 
 
@@ -359,16 +402,20 @@ class FloatingIpManager(network_base.FloatingIpManager):
     def list_targets(self):
         return [FloatingIpTarget(s) for s in self.client.servers.list()]
 
-    def get_target_id_by_instance(self, instance_id):
+    def get_target_id_by_instance(self, instance_id, target_list=None):
         return instance_id
 
-    def list_target_id_by_instance(self, instance_id):
+    def list_target_id_by_instance(self, instance_id, target_list=None):
         return [instance_id, ]
 
     def is_simple_associate_supported(self):
         return conf.HORIZON_CONFIG["simple_ip_management"]
 
+    def is_supported(self):
+        return True
 
+
+@memoized
 def novaclient(request):
     insecure = getattr(settings, 'OPENSTACK_SSL_NO_VERIFY', False)
     cacert = getattr(settings, 'OPENSTACK_SSL_CACERT', None)
@@ -492,7 +539,7 @@ def server_create(request, name, image, flavor, key_name, user_data,
                   security_groups, block_device_mapping=None,
                   block_device_mapping_v2=None, nics=None,
                   availability_zone=None, instance_count=1, admin_pass=None,
-                  disk_config=None):
+                  disk_config=None, config_drive=None, meta=None):
     return Server(novaclient(request).servers.create(
         name, image, flavor, userdata=user_data,
         security_groups=security_groups,
@@ -500,7 +547,8 @@ def server_create(request, name, image, flavor, key_name, user_data,
         block_device_mapping_v2=block_device_mapping_v2,
         nics=nics, availability_zone=availability_zone,
         min_count=instance_count, admin_pass=admin_pass,
-        disk_config=disk_config), request)
+        disk_config=disk_config, config_drive=config_drive,
+        meta=meta), request)
 
 
 def server_delete(request, instance):
@@ -686,13 +734,45 @@ def hypervisor_search(request, query, servers=True):
     return novaclient(request).hypervisors.search(query, servers)
 
 
+def evacuate_host(request, host, target=None, on_shared_storage=False):
+    # TODO(jmolle) This should be change for nova atomic api host_evacuate
+    hypervisors = novaclient(request).hypervisors.search(host, True)
+    response = []
+    err_code = None
+    for hypervisor in hypervisors:
+        hyper = Hypervisor(hypervisor)
+        # if hypervisor doesn't have servers, the attribute is not present
+        for server in hyper.servers:
+            try:
+                novaclient(request).servers.evacuate(server['uuid'],
+                                                     target,
+                                                     on_shared_storage)
+            except nova_exceptions.ClientException as err:
+                err_code = err.code
+                msg = _("Name: %(name)s ID: %(uuid)s")
+                msg = msg % {'name': server['name'], 'uuid': server['uuid']}
+                response.append(msg)
+
+    if err_code:
+        msg = _('Failed to evacuate instances: %s') % ', '.join(response)
+        raise nova_exceptions.ClientException(err_code, msg)
+
+    return True
+
+
 def tenant_absolute_limits(request, reserved=False):
     limits = novaclient(request).limits.get(reserved=reserved).absolute
     limits_dict = {}
     for limit in limits:
-        # -1 is used to represent unlimited quotas
-        if limit.value == -1:
-            limits_dict[limit.name] = float("inf")
+        if limit.value < 0:
+            # Workaround for nova bug 1370867 that absolute_limits
+            # returns negative value for total.*Used instead of 0.
+            # For such case, replace negative values with 0.
+            if limit.name.startswith('total') and limit.name.endswith('Used'):
+                limits_dict[limit.name] = 0
+            else:
+                # -1 is used to represent unlimited quotas
+                limits_dict[limit.name] = float("inf")
         else:
             limits_dict[limit.name] = limit.value
     return limits_dict
@@ -702,8 +782,8 @@ def availability_zone_list(request, detailed=False):
     return novaclient(request).availability_zones.list(detailed=detailed)
 
 
-def service_list(request):
-    return novaclient(request).services.list()
+def service_list(request, binary=None):
+    return novaclient(request).services.list(binary=binary)
 
 
 def aggregate_details_list(request):
@@ -730,6 +810,10 @@ def aggregate_update(request, aggregate_id, values):
     return novaclient(request).aggregates.update(aggregate_id, values)
 
 
+def aggregate_set_metadata(request, aggregate_id, metadata):
+    return novaclient(request).aggregates.set_metadata(aggregate_id, metadata)
+
+
 def host_list(request):
     return novaclient(request).hosts.list()
 
@@ -749,8 +833,9 @@ def list_extensions(request):
 
 @memoized
 def extension_supported(extension_name, request):
-    """this method will determine if nova supports a given extension name.
-    example values for the extension_name include AdminActions, ConsoleOutput,
+    """Determine if nova supports a given extension name.
+
+    Example values for the extension_name include AdminActions, ConsoleOutput,
     etc.
     """
     extensions = list_extensions(request)
@@ -763,3 +848,8 @@ def extension_supported(extension_name, request):
 def can_set_server_password():
     features = getattr(settings, 'OPENSTACK_HYPERVISOR_FEATURES', {})
     return features.get('can_set_password', False)
+
+
+def instance_action_list(request, instance_id):
+    return nova_instance_action.InstanceActionManager(
+        novaclient(request)).list(instance_id)

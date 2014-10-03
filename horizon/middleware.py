@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -30,14 +28,18 @@ from django.contrib.auth import REDIRECT_FIELD_NAME  # noqa
 from django.contrib.auth.views import redirect_to_login  # noqa
 from django.contrib import messages as django_messages
 from django import http
-from django.http import HttpResponseRedirect  # noqa
 from django import shortcuts
 from django.utils.encoding import iri_to_uri  # noqa
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
+from openstack_auth import utils as auth_utils
+from openstack_auth import views as auth_views
+import six
+
 from horizon import exceptions
 from horizon.utils import functions as utils
+
 
 LOG = logging.getLogger(__name__)
 
@@ -47,30 +49,64 @@ class HorizonMiddleware(object):
 
     logout_reason = None
 
-    def process_request(self, request):
-        """Adds data necessary for Horizon to function to the request."""
+    def _check_has_timed_timeout(self, request):
+        """Check for session timeout and return timestamp."""
+        has_timed_out = False
         # Activate timezone handling
         tz = request.session.get('django_timezone')
         if tz:
             timezone.activate(tz)
-
-        # Check for session timeout
         try:
             timeout = settings.SESSION_TIMEOUT
         except AttributeError:
             timeout = 1800
-
         last_activity = request.session.get('last_activity', None)
         timestamp = int(time.time())
+        if (
+            hasattr(request, "user")
+            and hasattr(request.user, "token")
+            and not auth_utils.is_token_valid(request.user.token)
+        ):
+            # The user was logged in, but his keystone token expired.
+            has_timed_out = True
+        if isinstance(last_activity, int):
+            if (timestamp - last_activity) > timeout:
+                has_timed_out = True
+            if has_timed_out:
+                request.session.pop('last_activity')
+        return (has_timed_out, timestamp)
+
+    def _logout(self, request, login_url=None, message=None):
+        """Logout a user and display a logout message."""
+        response = auth_views.logout(request, login_url)
+        if message is not None:
+            self.logout_reason = message
+            utils.add_logout_reason(request, response, message)
+        return response
+
+    def process_request(self, request):
+        """Adds data necessary for Horizon to function to the request."""
+
         request.horizon = {'dashboard': None,
                            'panel': None,
                            'async_messages': []}
+
+        # Check for session timeout if user is (or was) authenticated.
+        has_timed_out, timestamp = self._check_has_timed_timeout(request)
+        if has_timed_out:
+            return self._logout(request, request.path, _("Session timed out."))
 
         if not hasattr(request, "user") or not request.user.is_authenticated():
             # proceed no further if the current request is already known
             # not to be authenticated
             return None
-
+        if request.is_ajax():
+            # if the request is Ajax we do not want to proceed, as clients can
+            #  1) create pages with constant polling, which can create race
+            #     conditions when a page navigation occurs
+            #  2) might leave a user seemingly left logged in forever
+            #  3) thrashes db backed session engines with tons of changes
+            return None
         # If we use cookie-based sessions, check that the cookie size does not
         # reach the max size accepted by common web browsers.
         if (
@@ -85,7 +121,7 @@ class HorizonMiddleware(object):
             if max_cookie_size is not None and session_key is not None:
                 cookie_size = sum((
                     len(key) + len(value)
-                    for key, value in request.COOKIES.iteritems()
+                    for key, value in six.iteritems(request.COOKIES)
                 ))
                 if cookie_size >= max_cookie_size:
                     LOG.error(
@@ -102,15 +138,7 @@ class HorizonMiddleware(object):
                             'max_cookie_size': max_cookie_size,
                         }
                     )
-
-        if (isinstance(last_activity, int)
-                and (timestamp - last_activity) > timeout):
-            request.session.pop('last_activity')
-            response = HttpResponseRedirect(
-                '%s?next=%s' % (settings.LOGOUT_URL, request.path))
-            self.logout_reason = _("Session timed out.")
-            utils.add_logout_reason(request, response, self.logout_reason)
-            return response
+        # We have a valid session, so we set the timestamp
         request.session['last_activity'] = timestamp
 
     def process_exception(self, request, exception):
@@ -166,12 +194,15 @@ class HorizonMiddleware(object):
                             request, redirect_response, self.logout_reason)
                 else:
                     redirect_response = http.HttpResponse()
+                # Use a set while checking if we want a cookie's attributes
+                # copied
+                cookie_keys = set(('max_age', 'expires', 'path', 'domain',
+                                   'secure', 'httponly', 'logout_reason'))
                 # Copy cookies from HttpResponseRedirect towards HttpResponse
-                for cookie_name, cookie in response.cookies.iteritems():
+                for cookie_name, cookie in six.iteritems(response.cookies):
                     cookie_kwargs = dict((
-                        (key, value) for key, value in cookie.iteritems()
-                        if key in ('max_age', 'expires', 'path', 'domain',
-                            'secure', 'httponly') and value
+                        (key, value) for key, value in six.iteritems(cookie)
+                        if key in cookie_keys and value
                     ))
                     redirect_response.set_cookie(
                         cookie_name, cookie.value, **cookie_kwargs)

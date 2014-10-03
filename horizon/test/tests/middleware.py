@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 OpenStack Foundation
 # All Rights Reserved.
 #
@@ -37,9 +35,8 @@ class MiddlewareTests(test.TestCase):
 
         self.assertRedirects(resp, url)
 
-    def test_redirect_session_timeout(self):
+    def test_session_timeout(self):
         requested_url = '/project/instances/'
-        response_url = '%s?next=%s' % (settings.LOGOUT_URL, requested_url)
         request = self.factory.get(requested_url)
         try:
             timeout = settings.SESSION_TIMEOUT
@@ -48,8 +45,8 @@ class MiddlewareTests(test.TestCase):
         request.session['last_activity'] = int(time.time()) - (timeout + 10)
         mw = middleware.HorizonMiddleware()
         resp = mw.process_request(request)
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp.get('Location'), response_url)
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(requested_url, resp.get('Location'))
 
     def test_process_response_redirect_on_ajax_request(self):
         url = settings.LOGIN_URL
@@ -59,11 +56,11 @@ class MiddlewareTests(test.TestCase):
                                     HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         request.META['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest'
         request.horizon = {'async_messages':
-                                [('error', 'error_msg', 'extra_tag')]}
+                           [('error', 'error_msg', 'extra_tag')]}
 
         response = HttpResponseRedirect(url)
         response.client = self.client
 
         resp = mw.process_response(request, response)
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp['X-Horizon-Location'], url)
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(url, resp['X-Horizon-Location'])

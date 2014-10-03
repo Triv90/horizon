@@ -3,9 +3,8 @@
 
 {% block id %}alert_message_template{% endblock %}
 
-{% block template %}
-{% jstemplate %}
-<div class="alert alert-block fade in alert-[[type]]">
+{% block template %}{% spaceless %}{% jstemplate %}
+<div class="alert alert-dismissable fade in alert-[[type]]">
   <a class="close" data-dismiss="alert" href="#">&times;</a>
   <p>
     <strong>[[type_display]]</strong>
@@ -17,5 +16,4 @@
     [[/safe]]
   </p>
 </div>
-{% endjstemplate %}
-{% endblock %}
+{% endjstemplate %}{% endspaceless %}{% endblock %}

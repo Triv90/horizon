@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -21,24 +19,29 @@
 import logging
 import os
 import socket
+import time
 
 from django.contrib.auth.middleware import AuthenticationMiddleware  # noqa
 from django.contrib.auth.models import Permission  # noqa
 from django.contrib.auth.models import User  # noqa
 from django.contrib.contenttypes.models import ContentType  # noqa
 from django.contrib.messages.storage import default_storage  # noqa
+from django.contrib.sessions.backends.base import SessionBase  # noqa
 from django.core.handlers import wsgi
 from django import http
 from django import test as django_test
 from django.test.client import RequestFactory  # noqa
+from django.utils.encoding import force_text
 from django.utils import unittest
 
 LOG = logging.getLogger(__name__)
 
 
 try:
-    from selenium.webdriver.firefox.webdriver import WebDriver  # noqa
     from selenium.webdriver.support import ui as selenium_ui
+    import xvfbwrapper  # Only needed when running the Selenium tests headless
+
+    from horizon.test.webdriver import WebDriver  # noqa
 except ImportError as e:
     # NOTE(saschpe): Several distribution can't ship selenium due to its
     # non-free license. So they have to patch it out of test-requirements.txt
@@ -56,24 +59,55 @@ from horizon import middleware
 wsgi.WSGIRequest.__repr__ = lambda self: "<class 'django.http.HttpRequest'>"
 
 
+class SessionStore(SessionBase):
+    """Dict like object for simulating sessions in unittests."""
+
+    def load(self):
+        self.create()
+        return {}
+
+    def create(self):
+        self.modified = True
+
+    def save(self, must_create=False):
+        self._session_key = self._get_session_key()
+        self.modified = True
+
+    def exists(self, session_key=None):
+        return False
+
+    def delete(self, session_key=None):
+
+        self._session_key = ''
+        self._session_cache = {}
+        self.modified = True
+
+    def cycle_key(self):
+        self.save()
+
+    @classmethod
+    def clear_expired(cls):
+        pass
+
+
 class RequestFactoryWithMessages(RequestFactory):
     def get(self, *args, **kwargs):
         req = super(RequestFactoryWithMessages, self).get(*args, **kwargs)
         req.user = User()
-        req.session = {}
+        req.session = SessionStore()
         req._messages = default_storage(req)
         return req
 
     def post(self, *args, **kwargs):
         req = super(RequestFactoryWithMessages, self).post(*args, **kwargs)
         req.user = User()
-        req.session = {}
+        req.session = SessionStore()
         req._messages = default_storage(req)
         return req
 
 
 @unittest.skipIf(os.environ.get('SKIP_UNITTESTS', False),
-                     "The SKIP_UNITTESTS env variable is set.")
+                 "The SKIP_UNITTESTS env variable is set.")
 class TestCase(django_test.TestCase):
     """Specialized base test case class for Horizon which gives access to
     numerous additional features:
@@ -154,10 +188,11 @@ class TestCase(django_test.TestCase):
 
         # Otherwise, make sure we got the expected messages.
         for msg_type, count in kwargs.items():
-            msgs = [m.message for m in messages if msg_type in m.tags]
+            msgs = [force_text(m.message)
+                    for m in messages if msg_type in m.tags]
             assert len(msgs) == count, \
-                   "%s messages not as expected: %s" % (msg_type.title(),
-                                                        ", ".join(msgs))
+                "%s messages not as expected: %s" % (msg_type.title(),
+                                                     ", ".join(msgs))
 
 
 @unittest.skipUnless(os.environ.get('WITH_SELENIUM', False),
@@ -165,7 +200,13 @@ class TestCase(django_test.TestCase):
 class SeleniumTestCase(django_test.LiveServerTestCase):
     @classmethod
     def setUpClass(cls):
+        socket.setdefaulttimeout(60)
         if os.environ.get('WITH_SELENIUM', False):
+            time.sleep(1)
+            # Start a virtual display server for running the tests headless.
+            if os.environ.get('SELENIUM_HEADLESS', False):
+                cls.vdisplay = xvfbwrapper.Xvfb(width=1280, height=720)
+                cls.vdisplay.start()
             cls.selenium = WebDriver()
         super(SeleniumTestCase, cls).setUpClass()
 
@@ -173,10 +214,14 @@ class SeleniumTestCase(django_test.LiveServerTestCase):
     def tearDownClass(cls):
         if os.environ.get('WITH_SELENIUM', False):
             cls.selenium.quit()
+            time.sleep(1)
+        if hasattr(cls, 'vdisplay'):
+            cls.vdisplay.stop()
         super(SeleniumTestCase, cls).tearDownClass()
 
     def setUp(self):
-        socket.setdefaulttimeout(10)
+        socket.setdefaulttimeout(60)
+        self.selenium.implicitly_wait(30)
         self.ui = selenium_ui
         super(SeleniumTestCase, self).setUp()
 
@@ -186,17 +231,17 @@ class JasmineTests(SeleniumTestCase):
     through Selenium
 
     To run a jasmine test suite create a class which extends JasmineTests in
-    the :file:`horizon/test/jasmine/jasmine.py` and define two classes
+    the :file:`horizon/test/jasmine/jasmine_tests.py` and define two class
     attributes
 
     .. attribute:: sources
 
-        A list of of JS source files (the {{STATIC_URL}} will be added
+        A list of JS source files (the {{STATIC_URL}} will be added
         automatically, these are the source files tested
 
     .. attribute:: specs
 
-        A list of of Jasmine JS spec files (the {{STATIC_URL}} will be added
+        A list of Jasmine JS spec files (the {{STATIC_URL}} will be added
         automatically
 
     .. attribute:: template_name

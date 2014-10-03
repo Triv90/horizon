@@ -75,9 +75,14 @@ and disrupting services. Deployments using Apache2 can use the
 
 Uploads to the Glance image store service tend to be particularly large - in
 the order of hundreds of megabytes to multiple gigabytes. Deployments are able
-to disable the ability to upload images through Horizon by setting
+to disable local image uploads through Horizon by setting
 ``HORIZON_IMAGES_ALLOW_UPLOAD`` to ``False`` in your ``local_settings.py``
 file.
+
+.. note::
+    This will not disable image creation altogether, as this setting does not
+    affect images created by specifying an image location (URL) as the image source.
+
 
  .. _LimitRequestBody directive: http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestbody
 
@@ -205,7 +210,6 @@ following to ``local_settings.py``::
 
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_HTTPONLY = True
 
 Note that the CSRF_COOKIE_SECURE option is only available from Django 1.4. It
 does no harm to have the setting in earlier versions, but it does not take effect.

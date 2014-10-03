@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 OpenStack Foundation
 # Copyright 2012 Nebula, Inc.
 #
@@ -24,13 +22,14 @@ from horizon.utils import filters
 from openstack_dashboard import api
 from openstack_dashboard.dashboards.project.instances \
     import tables as project_tables
+from openstack_dashboard import policy
 
 
 class AdminEditInstance(project_tables.EditInstance):
     url = "horizon:admin:instances:update"
 
 
-class MigrateInstance(tables.BatchAction):
+class MigrateInstance(policy.PolicyTargetMixin, tables.BatchAction):
     name = "migrate"
     action_present = _("Migrate")
     action_past = _("Scheduled migration (pending confirmation) of")
@@ -38,12 +37,6 @@ class MigrateInstance(tables.BatchAction):
     data_type_plural = _("Instances")
     classes = ("btn-migrate", "btn-danger")
     policy_rules = (("compute", "compute_extension:admin_actions:migrate"),)
-
-    def get_policy_target(self, request, datum=None):
-        project_id = None
-        if datum:
-            project_id = getattr(datum, 'tenant_id', None)
-        return {"project_id": project_id}
 
     def allowed(self, request, instance):
         return ((instance.status in project_tables.ACTIVE_STATES
@@ -54,19 +47,14 @@ class MigrateInstance(tables.BatchAction):
         api.nova.server_migrate(request, obj_id)
 
 
-class LiveMigrateInstance(tables.LinkAction):
+class LiveMigrateInstance(policy.PolicyTargetMixin,
+                          tables.LinkAction):
     name = "live_migrate"
     verbose_name = _("Live Migrate Instance")
     url = "horizon:admin:instances:live_migrate"
     classes = ("ajax-modal", "btn-migrate", "btn-danger")
     policy_rules = (
         ("compute", "compute_extension:admin_actions:migrateLive"),)
-
-    def get_policy_target(self, request, datum=None):
-        project_id = None
-        if datum:
-            project_id = getattr(datum, 'tenant_id', None)
-        return {"project_id": project_id}
 
     def allowed(self, request, instance):
         return ((instance.status in project_tables.ACTIVE_STATES)
@@ -84,26 +72,28 @@ class AdminUpdateRow(project_tables.UpdateRow):
 
 
 class AdminInstanceFilterAction(tables.FilterAction):
+    # Change default name of 'filter' to distinguish this one from the
+    # project instances table filter, since this is used as part of the
+    # session property used for persisting the filter.
+    name = "filter_admin_instances"
     filter_type = "server"
-    filter_choices = (('project', _("Project")),
-                      ('name', _("Name"))
-                      )
-    needs_preloading = True
+    filter_choices = (('project', _("Project"), False),
+                      ('host', _("Host ="), True),
+                      ('name', _("Name"), True),
+                      ('ip', _("IPv4 Address ="), True),
+                      ('ip6', _("IPv6 Address ="), True),
+                      ('status', _("Status ="), True),
+                      ('image', _("Image ID ="), True),
+                      ('flavor', _("Flavor ID ="), True))
 
     def filter(self, table, instances, filter_string):
         """Server side search.
         When filtering is supported in the api, then we will handle in view
         """
-        filter_field = table.request.POST.get('instances__filter__q_field')
-        self.filter_field = filter_field
-        self.filter_string = filter_string
+        filter_field = table.get_filter_field()
         if filter_field == 'project' and filter_string:
             return [inst for inst in instances
                     if inst.tenant_name == filter_string]
-        if filter_field == 'name' and filter_string:
-            q = filter_string.lower()
-            return [instance for instance in instances
-                    if q in instance.name.lower()]
         return instances
 
 
@@ -118,13 +108,15 @@ class AdminInstancesTable(tables.DataTable):
         ("suspended", True),
         ("paused", True),
         ("error", False),
+        ("rescue", True),
+        ("shelved_offloaded", True),
     )
     tenant = tables.Column("tenant_name", verbose_name=_("Project"))
     # NOTE(gabriel): Commenting out the user column because all we have
     # is an ID, and correlating that at production scale using our current
     # techniques isn't practical. It can be added back in when we have names
     # returned in a practical manner by the API.
-    #user = tables.Column("user_id", verbose_name=_("User"))
+    # user = tables.Column("user_id", verbose_name=_("User"))
     host = tables.Column("OS-EXT-SRV-ATTR:host",
                          verbose_name=_("Host"),
                          classes=('nowrap-col',))
@@ -157,7 +149,7 @@ class AdminInstancesTable(tables.DataTable):
                           filters=(title, filters.replace_underscores),
                           verbose_name=_("Power State"))
     created = tables.Column("created",
-                            verbose_name=_("Uptime"),
+                            verbose_name=_("Time since created"),
                             filters=(filters.parse_isotime,
                                      filters.timesince_sortable),
                             attrs={'data-type': 'timesince'})

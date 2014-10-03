@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-#
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
 # a copy of the License at
@@ -12,15 +10,20 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import django.shortcuts
-import django.views.defaults
-from horizon.test import helpers as test
 import inspect
 import sys
 
+import django.shortcuts
+import django.views.defaults
+
 
 def dispatcher(request, test_name):
-    classes = inspect.getmembers(sys.modules[__name__], inspect.isclass)
+    # import is included in this non-standard location to avoid
+    # problems importing mox.  See bug/1288245
+    from horizon.test.jasmine import jasmine_tests as tests
+    classes = inspect.getmembers(sys.modules[tests.__name__],
+                                 inspect.isclass)
+
     if not test_name:
         return django.shortcuts.render(
             request,
@@ -41,11 +44,3 @@ def dispatcher(request, test_name):
                     {'specs': cls.specs, 'sources': cls.sources})
 
     return django.views.defaults.page_not_found(request)
-
-
-class ServicesTests(test.JasmineTests):
-    sources = [
-        'horizon/js/angular/horizon.conf.js',
-        'horizon/js/angular/services/horizon.utils.js'
-    ]
-    specs = ['horizon/tests/jasmine/utilsSpec.js']

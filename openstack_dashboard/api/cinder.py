@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -25,6 +23,7 @@ from __future__ import absolute_import
 import logging
 
 from django.conf import settings
+from django.utils.translation import pgettext_lazy
 from django.utils.translation import ugettext_lazy as _
 
 from cinderclient.v1.contrib import list_extensions as cinder_list_extensions
@@ -42,6 +41,12 @@ LOG = logging.getLogger(__name__)
 VOLUME_STATE_AVAILABLE = "available"
 DEFAULT_QUOTA_NAME = 'default'
 
+# Available consumer choices associated with QOS Specs
+CONSUMER_CHOICES = (
+    ('back-end', _('back-end')),
+    ('front-end', _('front-end')),
+    ('both', pgettext_lazy('Both of front-end and back-end', u'both')),
+)
 
 VERSIONS = base.APIVersionManager("volume", preferred_version=1)
 
@@ -78,10 +83,14 @@ class BaseCinderAPIResourceWrapper(base.APIResourceWrapper):
 class Volume(BaseCinderAPIResourceWrapper):
 
     _attrs = ['id', 'name', 'description', 'size', 'status', 'created_at',
-              'volume_type', 'availability_zone', 'imageRef', 'bootable'
+              'volume_type', 'availability_zone', 'imageRef', 'bootable',
               'snapshot_id', 'source_volid', 'attachments', 'tenant_name',
               'os-vol-host-attr:host', 'os-vol-tenant-attr:tenant_id',
-              'metadata']
+              'metadata', 'volume_image_metadata', 'encrypted']
+
+    @property
+    def is_bootable(self):
+        return self.bootable == 'true'
 
 
 class VolumeSnapshot(BaseCinderAPIResourceWrapper):
@@ -91,6 +100,43 @@ class VolumeSnapshot(BaseCinderAPIResourceWrapper):
               'os-extended-snapshot-attributes:project_id']
 
 
+class VolumeType(BaseCinderAPIResourceWrapper):
+
+    _attrs = ['id', 'name', 'extra_specs', 'created_at',
+              'os-extended-snapshot-attributes:project_id']
+
+
+class VolumeBackup(BaseCinderAPIResourceWrapper):
+
+    _attrs = ['id', 'name', 'description', 'container', 'size', 'status',
+              'created_at', 'volume_id', 'availability_zone']
+    _volume = None
+
+    @property
+    def volume(self):
+        return self._volume
+
+    @volume.setter
+    def volume(self, value):
+        self._volume = value
+
+
+class VolTypeExtraSpec(object):
+    def __init__(self, type_id, key, val):
+        self.type_id = type_id
+        self.id = key
+        self.key = key
+        self.value = val
+
+
+class QosSpec(object):
+    def __init__(self, id, key, val):
+        self.id = id
+        self.key = key
+        self.value = val
+
+
+@memoized
 def cinderclient(request):
     api_version = VERSIONS.get_active_version()
 
@@ -113,7 +159,7 @@ def cinderclient(request):
             cinder_url = base.url_for(request, 'volume')
     except exceptions.ServiceCatalogException:
         LOG.debug('no volume service configured.')
-        return None
+        raise
     LOG.debug('cinderclient connection created using token "%s" and url "%s"' %
               (request.user.token.id, cinder_url))
     c = api_version['client'].Client(request.user.username,
@@ -135,6 +181,11 @@ def _replace_v2_parameters(data):
         del data['name']
         del data['description']
     return data
+
+
+def version_get():
+    api_version = VERSIONS.get_active_version()
+    return api_version['version']
 
 
 def volume_list(request, search_opts=None):
@@ -187,6 +238,16 @@ def volume_delete(request, volume_id):
     return cinderclient(request).volumes.delete(volume_id)
 
 
+def volume_retype(request, volume_id, new_type, migration_policy):
+
+    if not retype_supported():
+        raise exceptions.NotAvailable
+
+    return cinderclient(request).volumes.retype(volume_id,
+                                                new_type,
+                                                migration_policy)
+
+
 def volume_update(request, volume_id, name, description):
     vol_data = {'name': name,
                 'description': description}
@@ -195,16 +256,30 @@ def volume_update(request, volume_id, name, description):
                                                 **vol_data)
 
 
+def volume_reset_state(request, volume_id, state):
+    return cinderclient(request).volumes.reset_state(volume_id, state)
+
+
+def volume_upload_to_image(request, volume_id, force, image_name,
+                           container_format, disk_format):
+    return cinderclient(request).volumes.upload_to_image(volume_id,
+                                                         force,
+                                                         image_name,
+                                                         container_format,
+                                                         disk_format)
+
+
 def volume_snapshot_get(request, snapshot_id):
     snapshot = cinderclient(request).volume_snapshots.get(snapshot_id)
     return VolumeSnapshot(snapshot)
 
 
-def volume_snapshot_list(request):
+def volume_snapshot_list(request, search_opts=None):
     c_client = cinderclient(request)
     if c_client is None:
         return []
-    return [VolumeSnapshot(s) for s in c_client.volume_snapshots.list()]
+    return [VolumeSnapshot(s) for s in c_client.volume_snapshots.list(
+        search_opts=search_opts)]
 
 
 def volume_snapshot_create(request, volume_id, name,
@@ -222,6 +297,65 @@ def volume_snapshot_delete(request, snapshot_id):
     return cinderclient(request).volume_snapshots.delete(snapshot_id)
 
 
+def volume_snapshot_update(request, snapshot_id, name, description):
+    snapshot_data = {'name': name,
+                     'description': description}
+    snapshot_data = _replace_v2_parameters(snapshot_data)
+    return cinderclient(request).volume_snapshots.update(snapshot_id,
+                                                         **snapshot_data)
+
+
+def volume_snapshot_reset_state(request, snapshot_id, state):
+    return cinderclient(request).volume_snapshots.reset_state(
+        snapshot_id, state)
+
+
+@memoized
+def volume_backup_supported(request):
+    """This method will determine if cinder supports backup.
+    """
+    # TODO(lcheng) Cinder does not expose the information if cinder
+    # backup is configured yet. This is a workaround until that
+    # capability is available.
+    # https://bugs.launchpad.net/cinder/+bug/1334856
+    cinder_config = getattr(settings, 'OPENSTACK_CINDER_FEATURES', {})
+    return cinder_config.get('enable_backup', False)
+
+
+def volume_backup_get(request, backup_id):
+    backup = cinderclient(request).backups.get(backup_id)
+    return VolumeBackup(backup)
+
+
+def volume_backup_list(request):
+    c_client = cinderclient(request)
+    if c_client is None:
+        return []
+    return [VolumeBackup(b) for b in c_client.backups.list()]
+
+
+def volume_backup_create(request,
+                         volume_id,
+                         container_name,
+                         name,
+                         description):
+    backup = cinderclient(request).backups.create(
+        volume_id,
+        container=container_name,
+        name=name,
+        description=description)
+    return VolumeBackup(backup)
+
+
+def volume_backup_delete(request, backup_id):
+    return cinderclient(request).backups.delete(backup_id)
+
+
+def volume_backup_restore(request, backup_id, volume_id):
+    return cinderclient(request).restores.restore(backup_id=backup_id,
+                                                  volume_id=volume_id)
+
+
 def tenant_quota_get(request, tenant_id):
     c_client = cinderclient(request)
     if c_client is None:
@@ -235,6 +369,28 @@ def tenant_quota_update(request, tenant_id, **kwargs):
 
 def default_quota_get(request, tenant_id):
     return base.QuotaSet(cinderclient(request).quotas.defaults(tenant_id))
+
+
+def volume_type_list_with_qos_associations(request):
+    vol_types = volume_type_list(request)
+    vol_types_dict = {}
+
+    # initialize and build a dictionary for lookup access below
+    for vol_type in vol_types:
+        vol_type.associated_qos_spec = ""
+        vol_types_dict[vol_type.id] = vol_type
+
+    # get all currently defined qos specs
+    qos_specs = qos_spec_list(request)
+    for qos_spec in qos_specs:
+        # get all volume types this qos spec is associated with
+        assoc_vol_types = qos_spec_get_associations(request, qos_spec.id)
+        for assoc_vol_type in assoc_vol_types:
+            # update volume type to hold this association info
+            vol_type = vol_types_dict[assoc_vol_type.id]
+            vol_type.associated_qos_spec = qos_spec.name
+
+    return vol_types
 
 
 def default_quota_update(request, **kwargs):
@@ -253,6 +409,77 @@ def volume_type_delete(request, volume_type_id):
     return cinderclient(request).volume_types.delete(volume_type_id)
 
 
+def volume_type_get(request, volume_type_id):
+    return cinderclient(request).volume_types.get(volume_type_id)
+
+
+def volume_type_extra_get(request, type_id, raw=False):
+    vol_type = volume_type_get(request, type_id)
+    extras = vol_type.get_keys()
+    if raw:
+        return extras
+    return [VolTypeExtraSpec(type_id, key, value) for
+            key, value in extras.items()]
+
+
+def volume_type_extra_set(request, type_id, metadata):
+    vol_type = volume_type_get(request, type_id)
+    if not metadata:
+        return None
+    return vol_type.set_keys(metadata)
+
+
+def volume_type_extra_delete(request, type_id, keys):
+    vol_type = volume_type_get(request, type_id)
+    return vol_type.unset_keys([keys])
+
+
+def qos_spec_list(request):
+    return cinderclient(request).qos_specs.list()
+
+
+def qos_spec_get(request, qos_spec_id):
+    return cinderclient(request).qos_specs.get(qos_spec_id)
+
+
+def qos_spec_delete(request, qos_spec_id):
+    return cinderclient(request).qos_specs.delete(qos_spec_id, force=True)
+
+
+def qos_spec_create(request, name, specs):
+    return cinderclient(request).qos_specs.create(name, specs)
+
+
+def qos_spec_get_keys(request, qos_spec_id, raw=False):
+    spec = qos_spec_get(request, qos_spec_id)
+    qos_specs = spec.specs
+    if raw:
+        return spec
+    return [QosSpec(qos_spec_id, key, value) for
+            key, value in qos_specs.items()]
+
+
+def qos_spec_set_keys(request, qos_spec_id, specs):
+    return cinderclient(request).qos_specs.set_keys(qos_spec_id, specs)
+
+
+def qos_spec_unset_keys(request, qos_spec_id, specs):
+    return cinderclient(request).qos_specs.unset_keys(qos_spec_id, specs)
+
+
+def qos_spec_associate(request, qos_specs, vol_type_id):
+    return cinderclient(request).qos_specs.associate(qos_specs, vol_type_id)
+
+
+def qos_spec_disassociate(request, qos_specs, vol_type_id):
+    return cinderclient(request).qos_specs.disassociate(qos_specs, vol_type_id)
+
+
+def qos_spec_get_associations(request, qos_spec_id):
+    return cinderclient(request).qos_specs.get_associations(qos_spec_id)
+
+
+@memoized
 def tenant_absolute_limits(request):
     limits = cinderclient(request).limits.get().absolute
     limits_dict = {}
@@ -263,6 +490,10 @@ def tenant_absolute_limits(request):
         else:
             limits_dict[limit.name] = limit.value
     return limits_dict
+
+
+def service_list(request):
+    return cinderclient(request).services.list()
 
 
 def availability_zone_list(request, detailed=False):
@@ -284,3 +515,10 @@ def extension_supported(request, extension_name):
         if extension.name == extension_name:
             return True
     return False
+
+
+@memoized
+def retype_supported():
+    """retype is only supported after cinder v2.
+    """
+    return version_get() >= 2

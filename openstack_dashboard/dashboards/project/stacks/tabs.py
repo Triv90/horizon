@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
 # a copy of the License at
@@ -19,6 +17,7 @@ from django.utils.translation import ugettext_lazy as _
 from horizon import messages
 from horizon import tabs
 from openstack_dashboard import api
+from openstack_dashboard import policy
 
 from openstack_dashboard.dashboards.project.stacks \
     import api as project_api
@@ -36,6 +35,12 @@ class StackTopologyTab(tabs.Tab):
     template_name = "project/stacks/_detail_topology.html"
     preload = False
 
+    def allowed(self, request):
+        return policy.check(
+            (("orchestration", "cloudformation:DescribeStacks"),
+             ("orchestration", "cloudformation:ListStackResources"),),
+            request)
+
     def get_context_data(self, request):
         context = {}
         stack = self.tab_group.kwargs['stack']
@@ -49,6 +54,11 @@ class StackOverviewTab(tabs.Tab):
     slug = "overview"
     template_name = "project/stacks/_detail_overview.html"
 
+    def allowed(self, request):
+        return policy.check(
+            (("orchestration", "cloudformation:DescribeStacks"),),
+            request)
+
     def get_context_data(self, request):
         return {"stack": self.tab_group.kwargs['stack']}
 
@@ -57,6 +67,11 @@ class ResourceOverviewTab(tabs.Tab):
     name = _("Overview")
     slug = "resource_overview"
     template_name = "project/stacks/_resource_overview.html"
+
+    def allowed(self, request):
+        return policy.check(
+            (("orchestration", "cloudformation:DescribeStackResource"),),
+            request)
 
     def get_context_data(self, request):
         resource = self.tab_group.kwargs['resource']
@@ -73,12 +88,20 @@ class StackEventsTab(tabs.Tab):
     template_name = "project/stacks/_detail_events.html"
     preload = False
 
+    def allowed(self, request):
+        return policy.check(
+            (("orchestration", "cloudformation:DescribeStackEvents"),),
+            request)
+
     def get_context_data(self, request):
         stack = self.tab_group.kwargs['stack']
         try:
             stack_identifier = '%s/%s' % (stack.stack_name, stack.id)
             events = api.heat.events_list(self.request, stack_identifier)
             LOG.debug('got events %s' % events)
+            # The stack id is needed to generate the resource URL.
+            for event in events:
+                event.stack_id = stack.id
         except Exception:
             events = []
             messages.error(request, _(
@@ -93,12 +116,20 @@ class StackResourcesTab(tabs.Tab):
     template_name = "project/stacks/_detail_resources.html"
     preload = False
 
+    def allowed(self, request):
+        return policy.check(
+            (("orchestration", "cloudformation:ListStackResources"),),
+            request)
+
     def get_context_data(self, request):
         stack = self.tab_group.kwargs['stack']
         try:
             stack_identifier = '%s/%s' % (stack.stack_name, stack.id)
             resources = api.heat.resources_list(self.request, stack_identifier)
             LOG.debug('got resources %s' % resources)
+            # The stack id is needed to generate the resource URL.
+            for r in resources:
+                r.stack_id = stack.id
         except Exception:
             resources = []
             messages.error(request, _(

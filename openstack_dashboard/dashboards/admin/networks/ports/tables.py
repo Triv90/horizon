@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 NEC Corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,6 +16,7 @@ import logging
 
 from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
 
 from horizon import exceptions
 from horizon import tables
@@ -25,14 +24,29 @@ from horizon import tables
 from openstack_dashboard import api
 from openstack_dashboard.dashboards.project.networks.ports import \
     tables as project_tables
-
+from openstack_dashboard import policy
 
 LOG = logging.getLogger(__name__)
 
 
-class DeletePort(tables.DeleteAction):
-    data_type_singular = _("Port")
-    data_type_plural = _("Ports")
+class DeletePort(policy.PolicyTargetMixin, tables.DeleteAction):
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Port",
+            u"Delete Ports",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Deleted Port",
+            u"Deleted Ports",
+            count
+        )
+
+    policy_rules = (("network", "delete_port"),)
 
     def delete(self, request, obj_id):
         try:
@@ -50,18 +64,22 @@ class CreatePort(tables.LinkAction):
     name = "create"
     verbose_name = _("Create Port")
     url = "horizon:admin:networks:addport"
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
+    policy_rules = (("network", "create_port"),)
 
     def get_link_url(self, datum=None):
         network_id = self.table.kwargs['network_id']
         return reverse(self.url, args=(network_id,))
 
 
-class UpdatePort(tables.LinkAction):
+class UpdatePort(policy.PolicyTargetMixin, tables.LinkAction):
     name = "update"
     verbose_name = _("Edit Port")
     url = "horizon:admin:networks:editport"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
+    policy_rules = (("network", "update_port"),)
 
     def get_link_url(self, port):
         network_id = self.table.kwargs['network_id']
@@ -79,9 +97,18 @@ class PortsTable(tables.DataTable):
     status = tables.Column("status", verbose_name=_("Status"))
     admin_state = tables.Column("admin_state",
                                 verbose_name=_("Admin State"))
+    mac_state = tables.Column("mac_state", empty_value=api.neutron.OFF_STATE,
+                              verbose_name=_("Mac Learning State"))
 
     class Meta:
         name = "ports"
         verbose_name = _("Ports")
         table_actions = (CreatePort, DeletePort)
         row_actions = (UpdatePort, DeletePort,)
+
+    def __init__(self, request, data=None, needs_form_wrapper=None, **kwargs):
+        super(PortsTable, self).__init__(request, data=data,
+                                         needs_form_wrapper=needs_form_wrapper,
+                                         **kwargs)
+        if not api.neutron.is_extension_supported(request, 'mac-learning'):
+            del self.columns['mac_state']

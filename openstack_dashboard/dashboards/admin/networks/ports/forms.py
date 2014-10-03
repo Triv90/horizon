@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 NEC Corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -41,8 +39,9 @@ class CreatePort(forms.SelfHandlingForm):
     name = forms.CharField(max_length=255,
                            label=_("Name"),
                            required=False)
-    admin_state = forms.BooleanField(label=_("Admin State"),
-                                     initial=True, required=False)
+    # TODO(amotoki): make UP/DOWN translatable
+    admin_state = forms.ChoiceField(choices=[(True, 'UP'), (False, 'DOWN')],
+                                    label=_("Admin State"))
     device_id = forms.CharField(max_length=100, label=_("Device ID"),
                                 help_text=_("Device ID attached to the port"),
                                 required=False)
@@ -51,15 +50,24 @@ class CreatePort(forms.SelfHandlingForm):
                                                "port"),
                                    required=False)
 
+    def __init__(self, request, *args, **kwargs):
+        super(CreatePort, self).__init__(request, *args, **kwargs)
+        if api.neutron.is_extension_supported(request, 'mac-learning'):
+            self.fields['mac_state'] = forms.BooleanField(
+                label=_("MAC Learning State"), initial=False, required=False)
+
     def handle(self, request, data):
         try:
             # We must specify tenant_id of the network which a subnet is
             # created for if admin user does not belong to the tenant.
             network = api.neutron.network_get(request, data['network_id'])
             data['tenant_id'] = network.tenant_id
-            data['admin_state_up'] = data['admin_state']
+            data['admin_state_up'] = (data['admin_state'] == 'True')
             del data['network_name']
             del data['admin_state']
+            if 'mac_state' in data:
+                data['mac_learning_enabled'] = data['mac_state']
+                del data['mac_state']
 
             port = api.neutron.port_create(request, **data)
             msg = _('Port %s was successfully created.') % port['id']
@@ -76,7 +84,7 @@ class CreatePort(forms.SelfHandlingForm):
 
 
 class UpdatePort(project_forms.UpdatePort):
-    #tenant_id = forms.CharField(widget=forms.HiddenInput())
+    # tenant_id = forms.CharField(widget=forms.HiddenInput())
     device_id = forms.CharField(max_length=100, label=_("Device ID"),
                                 help_text=_("Device ID attached to the port"),
                                 required=False)
@@ -89,11 +97,16 @@ class UpdatePort(project_forms.UpdatePort):
     def handle(self, request, data):
         try:
             LOG.debug('params = %s' % data)
+            extension_kwargs = {}
+            data['admin_state'] = (data['admin_state'] == 'True')
+            if 'mac_state' in data:
+                extension_kwargs['mac_learning_enabled'] = data['mac_state']
             port = api.neutron.port_update(request, data['port_id'],
                                            name=data['name'],
                                            admin_state_up=data['admin_state'],
                                            device_id=data['device_id'],
-                                           device_owner=data['device_owner'])
+                                           device_owner=data['device_owner'],
+                                           **extension_kwargs)
             msg = _('Port %s was successfully updated.') % data['port_id']
             LOG.debug(msg)
             messages.success(request, msg)

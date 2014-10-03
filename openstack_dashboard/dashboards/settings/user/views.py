@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,9 +13,9 @@
 #    under the License.
 
 from django.conf import settings
+
 from horizon import forms
 from horizon.utils import functions as utils
-
 from openstack_dashboard.dashboards.settings.user import forms as user_forms
 
 

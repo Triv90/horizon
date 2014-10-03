@@ -13,11 +13,11 @@ Install the prerequisite packages.
 
 On Ubuntu::
 
-    > sudo apt-get install git python-dev python-virtualenv
+    > sudo apt-get install git python-dev python-virtualenv libssl-dev libffi-dev
 
 On Fedora-based distributions (e.g., Fedora/RHEL/CentOS/Scientific Linux)::
 
-    > sudo yum install gcc git-core python-devel python-virtualenv openssl-devel
+    > sudo yum install gcc git-core python-devel python-virtualenv openssl-devel libffi-devel
 
 Setup
 =====
@@ -30,37 +30,55 @@ repository from http://github.com/openstack/horizon and execute the
     > cd horizon
     > ./run_tests.sh
 
+.. note::
+
+    Running ``run_tests.sh`` will build a virtualenv, ``.venv``, where all the
+    python dependencies for Horizon are installed and referenced. After the
+    dependencies are installed, the unit test suites in the Horizon repo will be
+    executed.  There should be no errors from the tests.
+
 Next you will need to setup your Django application config by copying ``openstack_dashboard/local/local_settings.py.example`` to ``openstack_dashboard/local/local_settings.py``. To do this quickly you can use the following command::
 
     > cp openstack_dashboard/local/local_settings.py.example openstack_dashboard/local/local_settings.py
 
+.. note::
+
+    To add new settings or customize existing settings, modify the ``local_settings.py`` file.
+
 Horizon assumes a single end-point for OpenStack services which defaults to
-the local host (127.0.0.1). If this is not the case change the
-``OPENSTACK_HOST`` setting in the ``openstack_dashboard/local/local_settings.py`` file, to the actual IP address of the OpenStack end-point Horizon should use.
+the local host (127.0.0.1), as is the default in DevStack. If this is not the
+case change the ``OPENSTACK_HOST`` setting in the
+``openstack_dashboard/local/local_settings.py`` file, to the actual IP address
+of the OpenStack end-point Horizon should use.
 
-To start the Horizon development server use the Django ``manage.py`` utility
-with the context of the virtual environment::
+To start the Horizon development server use ``run_tests.sh``::
 
-    > tools/with_venv.sh ./manage.py runserver
-
-Alternately specify the listen IP and port::
-
-    > tools/with_venv.sh ./manage.py runserver 0.0.0.0:8080
+    > ./run_tests.sh --runserver localhost:9000
 
 .. note::
 
-    If you would like to run commands without the prefix of ``tools/with_venv.sh`` you may source your environment directly. This will remain active as long as your shell session stays open::
+    The default port for runserver is 8000 which is already consumed by
+    heat-api-cfn in DevStack. If not running in DevStack
+    `./run_tests.sh --runserver` will start the test server at
+    `http://localhost:8000`.
 
-    > source .venv/bin/activate
+
+.. note::
+
+    The ``run_tests.sh`` script provides wrappers around ``manage.py``.
+    For more information on manage.py which is a django, see
+    `https://docs.djangoproject.com/en/dev/ref/django-admin/`
 
 
-Once the Horizon server is running point a web browser to http://localhost:8000
+Once the Horizon server is running, point a web browser to http://localhost:9000
 or to the IP and port the server is listening for.
 
 .. note::
 
     The ``DevStack`` project (http://devstack.org/) can be used to install
-    an OpenStack development environment from scratch.
+    an OpenStack development environment from scratch. For a local.conf that
+    enables most services that Horizon supports managing see
+    :doc:`local.conf <ref/local_conf>`
 
 .. note::
 
@@ -72,6 +90,31 @@ or to the IP and port the server is listening for.
     * Keystone
 
     Optional support is provided for Swift.
+
+
+Editing Horizon's Source
+========================
+
+Although DevStack installs and configures an instance of Horizon when running
+stack.sh, the preferred development setup follows the instructions above on the
+server/VM running DevStack. The are several advantages to maintaining a
+separate copy of the Horizon repo, rather than editing the devstack installed
+copy.
+
+    * Source code changes aren't as easily lost when running unstack.sh/stack.sh
+    * The development server picks up source code changes (other than JavaScript
+      and CSS due to compression and compilation) while still running.
+    * Log messages and print statements go directly to the console.
+    * Debugging with pdb becomes much simpler to interact with.
+
+.. Note::
+    JavaScript and CSS changes require a development server restart. Also,
+    forcing a refresh of the page (e.g. using Shift-F5) in the browser is
+    required to pull down non-cached versions of the CSS and JavaScript. The
+    default setting in Horizon is to do compilation and compression of these
+    files at server startup. If you have configured your local copy to do
+    offline compression, more steps are required.
+
 
 Horizon's Structure
 ===================
@@ -102,21 +145,17 @@ they should be added to ``requirements.txt``.
 Project
 =======
 
-INSTALLED_APPS
---------------
+Dashboard configuration
+-----------------------
 
-At the project level you add Horizon and any desired dashboards to your
-``settings.INSTALLED_APPS``::
+To add a new dashboard to your project, you need to add a configuration file to
+``openstack_dashboard/local/enabled`` directory. For more information on this,
+see :ref:`pluggable-settings-label`.
 
-    INSTALLED_APPS = (
-        'openstack_dashboard',
-        ...
-        'horizon',
-        'openstack_dashboard.dashboards.project',
-        'openstack_dashboard.dashboards.admin',
-        'openstack_dashboard.dashboards.settings',
-        ...
-    )
+There is also an alternative way to add a new dashboard, by adding it to
+Django's ``INSTALLED_APPS`` setting. For more information about this, see
+:ref:`dashboards`. However, please note that the recommended way is to take
+advantage of the pluggable settings feature.
 
 URLs
 ----
@@ -157,14 +196,14 @@ Application
 Structure
 ---------
 
-An application would have the following structure (we'll use syspanel as
+An application would have the following structure (we'll use project as
 an example)::
 
     project/
     |---__init__.py
     |---dashboard.py <-----Registers the app with Horizon and sets dashboard properties
     |---overview/
-    |---images_and_snapshots/
+    |---images/
         |-- images
         |-- __init__.py
         |---panel.py <-----Registers the panel in the app and defines panel properties

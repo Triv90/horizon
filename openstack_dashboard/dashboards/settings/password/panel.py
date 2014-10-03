@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Centrin Data Systems Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,15 +16,13 @@ from django.utils.translation import ugettext_lazy as _
 
 import horizon
 
-from openstack_dashboard.api import keystone
 from openstack_dashboard.dashboards.settings import dashboard
 
 
 class PasswordPanel(horizon.Panel):
     name = _("Change Password")
     slug = 'password'
+    policy_rules = (("identity", "identity:change_password"),)
 
-# TODO(mrunge): remove restriction, when keystone v3 has a update own user
-# function and checks passwords properly.
-if keystone.VERSIONS.active == 2:
-    dashboard.Settings.register(PasswordPanel)
+
+dashboard.Settings.register(PasswordPanel)

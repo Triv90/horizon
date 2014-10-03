@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -22,6 +20,7 @@ from django.core.urlresolvers import reverse
 from django.template import defaultfilters as filters
 from django.utils.http import urlencode
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
 
 from horizon import tables
 
@@ -29,8 +28,21 @@ from openstack_dashboard import api
 
 
 class DeleteFlavor(tables.DeleteAction):
-    data_type_singular = _("Flavor")
-    data_type_plural = _("Flavors")
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Flavor",
+            u"Delete Flavors",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Deleted Flavor",
+            u"Deleted Flavors",
+            count
+        )
 
     def delete(self, request, obj_id):
         api.nova.flavor_delete(request, obj_id)
@@ -40,28 +52,32 @@ class CreateFlavor(tables.LinkAction):
     name = "create"
     verbose_name = _("Create Flavor")
     url = "horizon:admin:flavors:create"
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
 
 
 class UpdateFlavor(tables.LinkAction):
     name = "update"
     verbose_name = _("Edit Flavor")
     url = "horizon:admin:flavors:update"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
 
 
-class ViewFlavorExtras(tables.LinkAction):
-    name = "extras"
-    verbose_name = _("View Extra Specs")
-    url = "horizon:admin:flavors:extras:index"
-    classes = ("btn-edit",)
+class UpdateMetadata(tables.LinkAction):
+    url = "horizon:admin:flavors:update_metadata"
+    name = "update_metadata"
+    verbose_name = _("Update Metadata")
+    classes = ("ajax-modal",)
+    icon = "pencil"
 
 
 class ModifyAccess(tables.LinkAction):
     name = "projects"
     verbose_name = _("Modify Access")
     url = "horizon:admin:flavors:update"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
 
     def get_link_url(self, flavor):
         step = 'update_flavor_access'
@@ -97,6 +113,10 @@ def get_ephemeral_size(flavor):
     return _("%sGB") % getattr(flavor, 'OS-FLV-EXT-DATA:ephemeral', 0)
 
 
+def get_extra_specs(flavor):
+    return flavor.get_keys()
+
+
 class FlavorsTable(tables.DataTable):
     name = tables.Column('name', verbose_name=_('Flavor Name'))
     vcpus = tables.Column('vcpus', verbose_name=_('VCPUs'))
@@ -117,6 +137,12 @@ class FlavorsTable(tables.DataTable):
                            verbose_name=_("Public"),
                            empty_value=False,
                            filters=(filters.yesno, filters.capfirst))
+    extra_specs = tables.Column(get_extra_specs,
+                                verbose_name=_("Metadata"),
+                                link="horizon:admin:flavors:update_metadata",
+                                link_classes=("ajax-modal",),
+                                empty_value=False,
+                                filters=(filters.yesno, filters.capfirst))
 
     class Meta:
         name = "flavors"
@@ -124,5 +150,5 @@ class FlavorsTable(tables.DataTable):
         table_actions = (FlavorFilterAction, CreateFlavor, DeleteFlavor)
         row_actions = (UpdateFlavor,
                        ModifyAccess,
-                       ViewFlavorExtras,
+                       UpdateMetadata,
                        DeleteFlavor)

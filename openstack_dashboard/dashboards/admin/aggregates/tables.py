@@ -12,6 +12,9 @@
 
 from django.template import defaultfilters as filters
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
+
+import six
 
 from horizon import tables
 
@@ -20,8 +23,21 @@ from openstack_dashboard.dashboards.admin.aggregates import constants
 
 
 class DeleteAggregateAction(tables.DeleteAction):
-    data_type_singular = _("Host Aggregate")
-    data_type_plural = _("Host Aggregates")
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Host Aggregate",
+            u"Delete Host Aggregates",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Deleted Host Aggregate",
+            u"Deleted Host Aggregates",
+            count
+        )
 
     def delete(self, request, obj_id):
         api.nova.aggregate_delete(request, obj_id)
@@ -31,21 +47,32 @@ class CreateAggregateAction(tables.LinkAction):
     name = "create"
     verbose_name = _("Create Host Aggregate")
     url = constants.AGGREGATES_CREATE_URL
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
 
 
 class ManageHostsAction(tables.LinkAction):
     name = "manage"
     verbose_name = _("Manage Hosts")
     url = constants.AGGREGATES_MANAGE_HOSTS_URL
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
+
+
+class UpdateMetadataAction(tables.LinkAction):
+    name = "update-metadata"
+    verbose_name = _("Update Metadata")
+    url = constants.AGGREGATES_UPDATE_METADATA_URL
+    classes = ("ajax-modal",)
+    icon = "pencil"
 
 
 class UpdateAggregateAction(tables.LinkAction):
     name = "update"
     verbose_name = _("Edit Host Aggregate")
     url = constants.AGGREGATES_UPDATE_URL
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
 
 
 class AggregateFilterAction(tables.FilterAction):
@@ -63,7 +90,7 @@ class AvailabilityZoneFilterAction(tables.FilterAction):
         q = filter_string.lower()
 
         def comp(availabilityZone):
-            return q in availabilityZone.name.lower()
+            return q in availabilityZone.zoneName.lower()
 
         return filter(comp, availability_zones)
 
@@ -74,7 +101,7 @@ def get_aggregate_hosts(aggregate):
 
 def get_metadata(aggregate):
     return [' = '.join([key, val]) for key, val
-            in aggregate.metadata.iteritems()]
+            in six.iteritems(aggregate.metadata)]
 
 
 def get_available(zone):
@@ -84,11 +111,17 @@ def get_available(zone):
 def get_zone_hosts(zone):
     hosts = zone.hosts
     host_details = []
+    if hosts is None:
+        return []
     for name, services in hosts.items():
-        up = all([s['active'] and s['available'] for k, s in services.items()])
+        up = all(s['active'] and s['available'] for s in services.values())
         up = _("Services Up") if up else _("Services Down")
         host_details.append("%(host)s (%(up)s)" % {'host': name, 'up': up})
     return host_details
+
+
+def safe_unordered_list(value):
+    return filters.unordered_list(value, autoescape=True)
 
 
 class HostAggregatesTable(tables.DataTable):
@@ -98,11 +131,11 @@ class HostAggregatesTable(tables.DataTable):
     hosts = tables.Column(get_aggregate_hosts,
                           verbose_name=_("Hosts"),
                           wrap_list=True,
-                          filters=(filters.unordered_list,))
+                          filters=(safe_unordered_list,))
     metadata = tables.Column(get_metadata,
                              verbose_name=_("Metadata"),
                              wrap_list=True,
-                             filters=(filters.unordered_list,))
+                             filters=(safe_unordered_list,))
 
     class Meta:
         name = "host_aggregates"
@@ -112,6 +145,7 @@ class HostAggregatesTable(tables.DataTable):
                          DeleteAggregateAction)
         row_actions = (UpdateAggregateAction,
                        ManageHostsAction,
+                       UpdateMetadataAction,
                        DeleteAggregateAction)
 
 
@@ -121,7 +155,7 @@ class AvailabilityZonesTable(tables.DataTable):
     hosts = tables.Column(get_zone_hosts,
                           verbose_name=_('Hosts'),
                           wrap_list=True,
-                          filters=(filters.unordered_list,))
+                          filters=(safe_unordered_list,))
     available = tables.Column(get_available,
                               verbose_name=_('Available'),
                               status=True,
@@ -133,5 +167,5 @@ class AvailabilityZonesTable(tables.DataTable):
     class Meta:
         name = "availability_zones"
         verbose_name = _("Availability Zones")
-        table_actions = (AggregateFilterAction,)
+        table_actions = (AvailabilityZoneFilterAction,)
         multi_select = False

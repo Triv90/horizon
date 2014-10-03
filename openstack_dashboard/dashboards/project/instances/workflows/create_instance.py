@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -20,6 +18,7 @@
 
 import json
 import logging
+import operator
 
 from django.template.defaultfilters import filesizeformat  # noqa
 from django.utils.text import normalize_newlines  # noqa
@@ -29,7 +28,6 @@ from django.views.decorators.debug import sensitive_variables  # noqa
 
 from horizon import exceptions
 from horizon import forms
-from horizon.utils import fields
 from horizon.utils import functions
 from horizon.utils import validators
 from horizon import workflows
@@ -91,7 +89,6 @@ class SetInstanceDetailsAction(workflows.Action):
                                help_text=_("Number of instances to launch."))
 
     source_type = forms.ChoiceField(label=_("Instance Boot Source"),
-                                    required=True,
                                     help_text=_("Choose Your Boot Source "
                                                 "Type."))
 
@@ -106,12 +103,14 @@ class SetInstanceDetailsAction(workflows.Action):
     image_id = forms.ChoiceField(
         label=_("Image Name"),
         required=False,
-        widget=fields.SelectWidget(
+        widget=forms.SelectWidget(
             data_attrs=('volume_size',),
             transform=lambda x: ("%s (%s)" % (x.name,
                                               filesizeformat(x.bytes)))))
 
     volume_size = forms.IntegerField(label=_("Device size (GB)"),
+                                  initial=1,
+                                  min_value=0,
                                   required=False,
                                   help_text=_("Volume size in gigabytes "
                                               "(integer value)."))
@@ -140,7 +139,7 @@ class SetInstanceDetailsAction(workflows.Action):
         super(SetInstanceDetailsAction, self).__init__(
             request, context, *args, **kwargs)
         source_type_choices = [
-            ('', _("--- Select source ---")),
+            ('', _("Select source")),
             ("image_id", _("Boot from image")),
             ("instance_snapshot_id", _("Boot from snapshot")),
         ]
@@ -180,11 +179,58 @@ class SetInstanceDetailsAction(workflows.Action):
             params = {'req': count,
                       'avail': available_count}
             raise forms.ValidationError(error_message % params)
+        try:
+            flavor_id = cleaned_data.get('flavor')
+            # We want to retrieve details for a given flavor,
+            # however flavor_list uses a memoized decorator
+            # so it is used instead of flavor_get to reduce the number
+            # of API calls.
+            flavors = instance_utils.flavor_list(self.request)
+            flavor = [x for x in flavors if x.id == flavor_id][0]
+        except IndexError:
+            flavor = None
+
+        count_error = []
+        # Validate cores and ram.
+        available_cores = usages['cores']['available']
+        if flavor and available_cores < count * flavor.vcpus:
+            count_error.append(_("Cores(Available: %(avail)s, "
+                                 "Requested: %(req)s)")
+                    % {'avail': available_cores,
+                       'req': count * flavor.vcpus})
+
+        available_ram = usages['ram']['available']
+        if flavor and available_ram < count * flavor.ram:
+            count_error.append(_("RAM(Available: %(avail)s, "
+                                 "Requested: %(req)s)")
+                    % {'avail': available_ram,
+                       'req': count * flavor.ram})
+
+        if count_error:
+            value_str = ", ".join(count_error)
+            msg = (_('The requested instance cannot be launched. '
+                     'The following requested resource(s) exceed '
+                     'quota(s): %s.') % value_str)
+            if count == 1:
+                self._errors['flavor'] = self.error_class([msg])
+            else:
+                self._errors['count'] = self.error_class([msg])
 
         # Validate our instance source.
         source_type = self.data.get('source_type', None)
 
         if source_type in ('image_id', 'volume_image_id'):
+            if source_type == 'volume_image_id':
+                volume_size = self.data.get('volume_size', None)
+                if not volume_size:
+                    msg = _("You must set volume size")
+                    self._errors['volume_size'] = self.error_class([msg])
+                if float(volume_size) <= 0:
+                    msg = _("Volume size must be greater than 0")
+                    self._errors['volume_size'] = self.error_class([msg])
+                if not cleaned_data.get('device_name'):
+                    msg = _("You must set device name")
+                    self._errors['device_name'] = self.error_class([msg])
             if not cleaned_data.get('image_id'):
                 msg = _("You must select an image.")
                 self._errors['image_id'] = self.error_class([msg])
@@ -204,30 +250,19 @@ class SetInstanceDetailsAction(workflows.Action):
                 except IndexError:
                     image = None
 
-                try:
-                    flavor_id = cleaned_data.get('flavor')
-                    # We want to retrieve details for a given flavor,
-                    # however flavor_list uses a memoized decorator
-                    # so it is used instead of flavor_get to reduce the number
-                    # of API calls.
-                    flavors = instance_utils.flavor_list(self.request)
-                    flavor = [x for x in flavors if x.id == flavor_id][0]
-                except IndexError:
-                    flavor = None
-
                 if image and flavor:
                     props_mapping = (("min_ram", "ram"), ("min_disk", "disk"))
                     for iprop, fprop in props_mapping:
                         if getattr(image, iprop) > 0 and \
                                 getattr(image, iprop) > getattr(flavor, fprop):
-                            msg = _("The flavor '%(flavor)s' is too small for "
-                                    "requested image.\n"
-                                    "Minimum requirements: "
-                                    "%(min_ram)s MB of RAM and "
-                                    "%(min_disk)s GB of Root Disk." %
-                                    {'flavor': flavor.name,
-                                     'min_ram': image.min_ram,
-                                     'min_disk': image.min_disk})
+                            msg = (_("The flavor '%(flavor)s' is too small "
+                                     "for requested image.\n"
+                                     "Minimum requirements: "
+                                     "%(min_ram)s MB of RAM and "
+                                     "%(min_disk)s GB of Root Disk.") %
+                                   {'flavor': flavor.name,
+                                    'min_ram': image.min_ram,
+                                    'min_disk': image.min_disk})
                             self._errors['image_id'] = self.error_class([msg])
                             break  # Not necessary to continue the tests.
 
@@ -237,12 +272,12 @@ class SetInstanceDetailsAction(workflows.Action):
                         img_gigs = functions.bytes_to_gigabytes(image.size)
                         smallest_size = max(img_gigs, image.min_disk)
                         if volume_size < smallest_size:
-                            msg = _("The Volume size is too small for the"
-                                    " '%(image_name)s' image and has to be"
-                                    " greater than or equal to "
-                                    "'%(smallest_size)d' GB." %
-                                    {'image_name': image.name,
-                                     'smallest_size': smallest_size})
+                            msg = (_("The Volume size is too small for the"
+                                     " '%(image_name)s' image and has to be"
+                                     " greater than or equal to "
+                                     "'%(smallest_size)d' GB.") %
+                                   {'image_name': image.name,
+                                    'smallest_size': smallest_size})
                             self._errors['volume_size'] = self.error_class(
                                 [msg])
 
@@ -262,17 +297,6 @@ class SetInstanceDetailsAction(workflows.Action):
                 msg = _('Launching multiple instances is only supported for '
                         'images and instance snapshots.')
                 raise forms.ValidationError(msg)
-
-        elif source_type == 'volume_image_id':
-            if not cleaned_data['image_id']:
-                msg = _("You must select an image.")
-                self._errors['image_id'] = self.error_class([msg])
-            if not self.data.get('volume_size', None):
-                msg = _("You must set volume size")
-                self._errors['volume_size'] = self.error_class([msg])
-            if not cleaned_data.get('device_name'):
-                msg = _("You must set device name")
-                self._errors['device_name'] = self.error_class([msg])
 
         elif source_type == 'volume_snapshot_id':
             if not cleaned_data.get('volume_snapshot_id'):
@@ -307,8 +331,8 @@ class SetInstanceDetailsAction(workflows.Action):
             zone_list.insert(0, ("", _("Any Availability Zone")))
         return zone_list
 
-    def get_help_text(self):
-        extra = {}
+    def get_help_text(self, extra_context=None):
+        extra = extra_context or {}
         try:
             extra['usages'] = api.nova.tenant_absolute_limits(self.request)
             extra['usages_json'] = json.dumps(extra['usages'])
@@ -375,6 +399,7 @@ class SetInstanceDetailsAction(workflows.Action):
                    for image in images
                    if image.properties.get("image_type", '') == "snapshot"]
         if choices:
+            choices.sort(key=operator.itemgetter(1))
             choices.insert(0, ("", _("Select Instance Snapshot")))
         else:
             choices.insert(0, ("", _("No snapshots available")))
@@ -384,7 +409,8 @@ class SetInstanceDetailsAction(workflows.Action):
         try:
             volumes = [self._get_volume_display_name(v)
                        for v in cinder.volume_list(self.request)
-                       if v.status == api.cinder.VOLUME_STATE_AVAILABLE]
+                       if v.status == api.cinder.VOLUME_STATE_AVAILABLE
+                        and v.bootable == 'true']
         except Exception:
             volumes = []
             exceptions.handle(self.request,
@@ -451,7 +477,7 @@ KEYPAIR_IMPORT_URL = "horizon:project:access_and_security:keypairs:import"
 class SetAccessControlsAction(workflows.Action):
     keypair = forms.DynamicChoiceField(label=_("Key Pair"),
                                        required=False,
-                                       help_text=_("Which key pair to use for "
+                                       help_text=_("Key pair to use for "
                                                    "authentication."),
                                        add_item_link=KEYPAIR_IMPORT_URL)
     admin_pass = forms.RegexField(
@@ -465,7 +491,6 @@ class SetAccessControlsAction(workflows.Action):
         required=False,
         widget=forms.PasswordInput(render_value=False))
     groups = forms.MultipleChoiceField(label=_("Security Groups"),
-                                       required=True,
                                        initial=["default"],
                                        widget=forms.CheckboxSelectMultiple(),
                                        help_text=_("Launch instance in these "
@@ -535,29 +560,88 @@ class SetAccessControls(workflows.Step):
 
 
 class CustomizeAction(workflows.Action):
-    customization_script = forms.CharField(widget=forms.Textarea,
-                                           label=_("Customization Script"),
-                                           required=False,
-                                           help_text=_("A script or set of "
-                                                       "commands to be "
-                                                       "executed after the "
-                                                       "instance has been "
-                                                       "built (max 16kb)."))
-
     class Meta:
         name = _("Post-Creation")
         help_text_template = ("project/instances/"
                               "_launch_customize_help.html")
 
+    source_choices = [('raw', _('Direct Input')),
+                      ('file', _('File'))]
+
+    attributes = {'class': 'switchable', 'data-slug': 'scriptsource'}
+    script_source = forms.ChoiceField(label=_('Customization Script Source'),
+                                        choices=source_choices,
+                                        widget=forms.Select(attrs=attributes))
+
+    script_help = _("A script or set of commands to be executed after the "
+                    "instance has been built (max 16kb).")
+
+    script_upload = forms.FileField(
+        label=_('Script File'),
+        help_text=script_help,
+        widget=forms.FileInput(attrs={
+            'class': 'switched',
+            'data-switch-on': 'scriptsource',
+            'data-scriptsource-file': _('Script File')}),
+        required=False)
+
+    script_data = forms.CharField(
+        label=_('Script Data'),
+        help_text=script_help,
+        widget=forms.widgets.Textarea(attrs={
+            'class': 'switched',
+            'data-switch-on': 'scriptsource',
+            'data-scriptsource-raw': _('Script Data')}),
+        required=False)
+
+    def __init__(self, *args):
+        super(CustomizeAction, self).__init__(*args)
+
+    def clean(self):
+        cleaned = super(CustomizeAction, self).clean()
+
+        files = self.request.FILES
+        script = self.clean_uploaded_files('script', files)
+
+        if script is not None:
+            cleaned['script_data'] = script
+
+        return cleaned
+
+    def clean_uploaded_files(self, prefix, files):
+        upload_str = prefix + "_upload"
+
+        has_upload = upload_str in files
+        if has_upload:
+            upload_file = files[upload_str]
+            log_script_name = upload_file.name
+            LOG.info('got upload %s' % log_script_name)
+
+            if upload_file._size > 16 * 1024:  # 16kb
+                msg = _('File exceeds maximum size (16kb)')
+                raise forms.ValidationError(msg)
+            else:
+                script = upload_file.read()
+                if script != "":
+                    try:
+                        normalize_newlines(script)
+                    except Exception as e:
+                        msg = _('There was a problem parsing the'
+                                ' %(prefix)s: %(error)s')
+                        msg = msg % {'prefix': prefix, 'error': e}
+                        raise forms.ValidationError(msg)
+                return script
+        else:
+            return None
+
 
 class PostCreationStep(workflows.Step):
     action_class = CustomizeAction
-    contributes = ("customization_script",)
+    contributes = ("script_data",)
 
 
 class SetNetworkAction(workflows.Action):
     network = forms.MultipleChoiceField(label=_("Networks"),
-                                        required=True,
                                         widget=forms.CheckboxSelectMultiple(),
                                         error_messages={
                                             'required': _(
@@ -566,16 +650,23 @@ class SetNetworkAction(workflows.Action):
                                         help_text=_("Launch instance with"
                                                     " these networks"))
     if api.neutron.is_port_profiles_supported():
-        profile = forms.ChoiceField(label=_("Policy Profiles"),
-                                    required=False,
-                                    help_text=_("Launch instance with "
-                                                "this policy profile"))
+        widget = None
+    else:
+        widget = forms.HiddenInput()
+    profile = forms.ChoiceField(label=_("Policy Profiles"),
+                                required=False,
+                                widget=widget,
+                                help_text=_("Launch instance with "
+                                            "this policy profile"))
 
     def __init__(self, request, *args, **kwargs):
         super(SetNetworkAction, self).__init__(request, *args, **kwargs)
         network_list = self.fields["network"].choices
         if len(network_list) == 1:
             self.fields['network'].initial = [network_list[0][0]]
+        if api.neutron.is_port_profiles_supported():
+            self.fields['profile'].choices = (
+                self.get_policy_profile_choices(request))
 
     class Meta:
         name = _("Networking")
@@ -583,26 +674,33 @@ class SetNetworkAction(workflows.Action):
         help_text = _("Select networks for your instance.")
 
     def populate_network_choices(self, request, context):
+        network_list = []
         try:
             tenant_id = self.request.user.tenant_id
             networks = api.neutron.network_list_for_tenant(request, tenant_id)
             for n in networks:
                 n.set_id_as_name_if_empty()
-            network_list = [(network.id, network.name) for network in networks]
+                network_list.append((n.id, n.name))
+            sorted(network_list, key=lambda obj: obj[1])
         except Exception:
-            network_list = []
             exceptions.handle(request,
                               _('Unable to retrieve networks.'))
         return network_list
 
-    def populate_profile_choices(self, request, context):
+    def get_policy_profile_choices(self, request):
+        profile_choices = [('', _("Select a profile"))]
+        for profile in self._get_profiles(request, 'policy'):
+            profile_choices.append((profile.id, profile.name))
+        return profile_choices
+
+    def _get_profiles(self, request, type_p):
+        profiles = []
         try:
-            profiles = api.neutron.profile_list(request, 'policy')
-            profile_list = [(profile.id, profile.name) for profile in profiles]
+            profiles = api.neutron.profile_list(request, type_p)
         except Exception:
-            profile_list = []
-            exceptions.handle(request, _("Unable to retrieve profiles."))
-        return profile_list
+            msg = _('Network Profiles could not be retrieved.')
+            exceptions.handle(request, msg)
+        return profiles
 
 
 class SetNetwork(workflows.Step):
@@ -631,14 +729,35 @@ class SetNetwork(workflows.Step):
 
 
 class SetAdvancedAction(workflows.Action):
-    disk_config = forms.ChoiceField(label=_("Disk Partition"),
-                                    required=False)
+    disk_config = forms.ChoiceField(label=_("Disk Partition"), required=False,
+        help_text=_("Automatic: The entire disk is a single partition and "
+                    "automatically resizes. Manual: Results in faster build "
+                    "times but requires manual partitioning."))
+    config_drive = forms.BooleanField(label=_("Configuration Drive"),
+        required=False, help_text=_("Configure OpenStack to write metadata to "
+                                    "a special configuration drive that "
+                                    "attaches to the instance when it boots."))
 
-    def __init__(self, request, *args, **kwargs):
-        super(SetAdvancedAction, self).__init__(request, *args, **kwargs)
-        # Set our disk_config choices
-        config_choices = [("AUTO", _("Automatic")), ("MANUAL", _("Manual"))]
-        self.fields['disk_config'].choices = config_choices
+    def __init__(self, request, context, *args, **kwargs):
+        super(SetAdvancedAction, self).__init__(request, context,
+                                                *args, **kwargs)
+        try:
+            if not api.nova.extension_supported("DiskConfig", request):
+                del self.fields['disk_config']
+            else:
+                # Set our disk_config choices
+                config_choices = [("AUTO", _("Automatic")),
+                                  ("MANUAL", _("Manual"))]
+                self.fields['disk_config'].choices = config_choices
+            # Only show the Config Drive option for the Launch Instance
+            # workflow (not Resize Instance) and only if the extension
+            # is supported.
+            if context.get('workflow_slug') != 'launch_instance' or (
+                    not api.nova.extension_supported("ConfigDrive", request)):
+                del self.fields['config_drive']
+        except Exception:
+            exceptions.handle(request, _('Unable to retrieve extensions '
+                                         'information.'))
 
     class Meta:
         name = _("Advanced Options")
@@ -648,7 +767,16 @@ class SetAdvancedAction(workflows.Action):
 
 class SetAdvanced(workflows.Step):
     action_class = SetAdvancedAction
-    contributes = ("disk_config",)
+    contributes = ("disk_config", "config_drive",)
+
+    def prepare_action_context(self, request, context):
+        context = super(SetAdvanced, self).prepare_action_context(request,
+                                                                  context)
+        # Add the workflow slug to the context so that we can tell which
+        # workflow is being used when creating the action. This step is
+        # used by both the Launch Instance and Resize Instance workflows.
+        context['workflow_slug'] = self.workflow.slug
+        return context
 
 
 class LaunchInstance(workflows.Workflow):
@@ -658,6 +786,7 @@ class LaunchInstance(workflows.Workflow):
     success_message = _('Launched %(count)s named "%(name)s".')
     failure_message = _('Unable to launch %(count)s named "%(name)s".')
     success_url = "horizon:project:instances:index"
+    multipart = True
     default_steps = (SelectProjectUser,
                      SetInstanceDetails,
                      SetAccessControls,
@@ -676,7 +805,7 @@ class LaunchInstance(workflows.Workflow):
 
     @sensitive_variables('context')
     def handle(self, request, context):
-        custom_script = context.get('customization_script', '')
+        custom_script = context.get('script_data', '')
 
         dev_mapping_1 = None
         dev_mapping_2 = None
@@ -717,16 +846,15 @@ class LaunchInstance(workflows.Workflow):
         # for the use with the plugin supporting port profiles.
         # neutron port-create <Network name> --n1kv:profile <Port Profile ID>
         # for net_id in context['network_id']:
-        ## HACK for now use first network
+        # HACK for now use first network.
         if api.neutron.is_port_profiles_supported():
             net_id = context['network_id'][0]
             LOG.debug("Horizon->Create Port with %(netid)s %(profile_id)s",
                       {'netid': net_id, 'profile_id': context['profile_id']})
             port = None
             try:
-                port = api.neutron.port_create(request, net_id,
-                                               policy_profile_id=
-                                               context['profile_id'])
+                port = api.neutron.port_create(
+                    request, net_id, policy_profile_id=context['profile_id'])
             except Exception:
                 msg = (_('Port not created for profile-id (%s).') %
                        context['profile_id'])
@@ -749,7 +877,8 @@ class LaunchInstance(workflows.Workflow):
                                    availability_zone=avail_zone,
                                    instance_count=int(context['count']),
                                    admin_pass=context['admin_pass'],
-                                   disk_config=context['disk_config'])
+                                   disk_config=context.get('disk_config'),
+                                   config_drive=context.get('config_drive'))
             return True
         except Exception:
             exceptions.handle(request)

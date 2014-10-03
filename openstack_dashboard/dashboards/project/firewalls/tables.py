@@ -1,4 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
 #    Copyright 2013, Big Switch Networks, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,15 +17,19 @@
 from django.core.urlresolvers import reverse
 from django.template import defaultfilters as filters
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
 
 from horizon import tables
+from openstack_dashboard import policy
 
 
 class AddRuleLink(tables.LinkAction):
     name = "addrule"
     verbose_name = _("Add Rule")
     url = "horizon:project:firewalls:addrule"
-    classes = ("ajax-modal", "btn-create",)
+    classes = ("ajax-modal",)
+    icon = "plus"
+    policy_rules = (("network", "create_firewall_rule"),)
 
 
 class AddPolicyLink(tables.LinkAction):
@@ -34,43 +37,90 @@ class AddPolicyLink(tables.LinkAction):
     verbose_name = _("Add Policy")
     url = "horizon:project:firewalls:addpolicy"
     classes = ("ajax-modal", "btn-addpolicy",)
+    policy_rules = (("network", "create_firewall_policy"),)
 
 
 class AddFirewallLink(tables.LinkAction):
     name = "addfirewall"
     verbose_name = _("Create Firewall")
     url = "horizon:project:firewalls:addfirewall"
-    classes = ("ajax-modal", "btn-addfirewall",)
+    classes = ("ajax-modal",)
+    icon = "plus"
+    policy_rules = (("network", "create_firewall"),)
 
 
-class DeleteRuleLink(tables.DeleteAction):
+class DeleteRuleLink(policy.PolicyTargetMixin, tables.DeleteAction):
     name = "deleterule"
-    action_present = _("Delete")
-    action_past = _("Scheduled deletion of %(data_type)s")
-    data_type_singular = _("Rule")
-    data_type_plural = _("Rules")
+
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Rule",
+            u"Delete Rules",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Scheduled deletion of Rule",
+            u"Scheduled deletion of Rules",
+            count
+        )
+
+    policy_rules = (("network", "delete_firewall_rule"),)
 
 
-class DeletePolicyLink(tables.DeleteAction):
+class DeletePolicyLink(policy.PolicyTargetMixin, tables.DeleteAction):
     name = "deletepolicy"
-    action_present = _("Delete")
-    action_past = _("Scheduled deletion of %(data_type)s")
-    data_type_singular = _("Policy")
-    data_type_plural = _("Policies")
+
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Policy",
+            u"Delete Policies",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Scheduled deletion of Policy",
+            u"Scheduled deletion of Policies",
+            count
+        )
+
+    policy_rules = (("network", "delete_firewall_policy"),)
 
 
-class DeleteFirewallLink(tables.DeleteAction):
+class DeleteFirewallLink(policy.PolicyTargetMixin,
+                         tables.DeleteAction):
     name = "deletefirewall"
-    action_present = _("Delete")
-    action_past = _("Scheduled deletion of %(data_type)s")
-    data_type_singular = _("Firewall")
-    data_type_plural = _("Firewalls")
+
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Firewall",
+            u"Delete Firewalls",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Scheduled deletion of Firewall",
+            u"Scheduled deletion of Firewalls",
+            count
+        )
+
+    policy_rules = (("network", "delete_firewall"),)
 
 
-class UpdateRuleLink(tables.LinkAction):
+class UpdateRuleLink(policy.PolicyTargetMixin, tables.LinkAction):
     name = "updaterule"
     verbose_name = _("Edit Rule")
     classes = ("ajax-modal", "btn-update",)
+    policy_rules = (("network", "update_firewall_rule"),)
 
     def get_link_url(self, rule):
         base_url = reverse("horizon:project:firewalls:updaterule",
@@ -78,10 +128,11 @@ class UpdateRuleLink(tables.LinkAction):
         return base_url
 
 
-class UpdatePolicyLink(tables.LinkAction):
+class UpdatePolicyLink(policy.PolicyTargetMixin, tables.LinkAction):
     name = "updatepolicy"
     verbose_name = _("Edit Policy")
     classes = ("ajax-modal", "btn-update",)
+    policy_rules = (("network", "update_firewall_policy"),)
 
     def get_link_url(self, policy):
         base_url = reverse("horizon:project:firewalls:updatepolicy",
@@ -89,10 +140,11 @@ class UpdatePolicyLink(tables.LinkAction):
         return base_url
 
 
-class UpdateFirewallLink(tables.LinkAction):
+class UpdateFirewallLink(policy.PolicyTargetMixin, tables.LinkAction):
     name = "updatefirewall"
     verbose_name = _("Edit Firewall")
     classes = ("ajax-modal", "btn-update",)
+    policy_rules = (("network", "update_firewall"),)
 
     def get_link_url(self, firewall):
         base_url = reverse("horizon:project:firewalls:updatefirewall",
@@ -100,10 +152,13 @@ class UpdateFirewallLink(tables.LinkAction):
         return base_url
 
 
-class InsertRuleToPolicyLink(tables.LinkAction):
+class InsertRuleToPolicyLink(policy.PolicyTargetMixin,
+                             tables.LinkAction):
     name = "insertrule"
     verbose_name = _("Insert Rule")
     classes = ("ajax-modal", "btn-update",)
+    policy_rules = (("network", "get_firewall_policy"),
+        ("network", "insert_rule"),)
 
     def get_link_url(self, policy):
         base_url = reverse("horizon:project:firewalls:insertrule",
@@ -111,10 +166,13 @@ class InsertRuleToPolicyLink(tables.LinkAction):
         return base_url
 
 
-class RemoveRuleFromPolicyLink(tables.LinkAction):
+class RemoveRuleFromPolicyLink(policy.PolicyTargetMixin,
+                               tables.LinkAction):
     name = "removerule"
     verbose_name = _("Remove Rule")
     classes = ("ajax-modal", "btn-danger",)
+    policy_rules = (("network", "get_firewall_policy"),
+        ("network", "remove_rule"),)
 
     def get_link_url(self, policy):
         base_url = reverse("horizon:project:firewalls:removerule",

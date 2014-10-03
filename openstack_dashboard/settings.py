@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -24,6 +22,25 @@ import sys
 import warnings
 
 from django.utils.translation import ugettext_lazy as _
+import xstatic.main
+import xstatic.pkg.angular
+import xstatic.pkg.angular_cookies
+import xstatic.pkg.angular_mock
+import xstatic.pkg.bootstrap_datepicker
+import xstatic.pkg.bootstrap_scss
+import xstatic.pkg.d3
+import xstatic.pkg.font_awesome
+import xstatic.pkg.hogan
+import xstatic.pkg.jasmine
+import xstatic.pkg.jquery
+import xstatic.pkg.jquery_migrate
+import xstatic.pkg.jquery_quicksearch
+import xstatic.pkg.jquery_tablesorter
+import xstatic.pkg.jquery_ui
+import xstatic.pkg.jsencrypt
+import xstatic.pkg.qunit
+import xstatic.pkg.rickshaw
+import xstatic.pkg.spin
 
 from openstack_dashboard import exceptions
 
@@ -56,7 +73,7 @@ STATIC_URL = '/static/'
 ROOT_URLCONF = 'openstack_dashboard.urls'
 
 HORIZON_CONFIG = {
-    'dashboards': ('project', 'admin', 'settings', 'router',),
+    'dashboards': ('project', 'admin', 'router',),
     'default_dashboard': 'project',
     'user_home': 'openstack_dashboard.views.get_user_home',
     'ajax_queue_limit': 10,
@@ -69,6 +86,8 @@ HORIZON_CONFIG = {
     'exceptions': {'recoverable': exceptions.RECOVERABLE,
                    'not_found': exceptions.NOT_FOUND,
                    'unauthorized': exceptions.UNAUTHORIZED},
+    'angular_modules': [],
+    'js_files': [],
 }
 
 # Set to True to allow users to upload images to glance via Horizon server.
@@ -81,7 +100,7 @@ HORIZON_IMAGES_ALLOW_UPLOAD = True
 # of supported image formats.
 OPENSTACK_IMAGE_BACKEND = {
     'image_formats': [
-        ('', ''),
+        ('', _('Select format')),
         ('aki', _('AKI - Amazon Kernel Image')),
         ('ami', _('AMI - Amazon Machine Image')),
         ('ari', _('ARI - Amazon Ramdisk Image')),
@@ -128,12 +147,60 @@ TEMPLATE_DIRS = (
 )
 
 STATICFILES_FINDERS = (
-    'compressor.finders.CompressorFinder',
+    'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'compressor.finders.CompressorFinder',
 )
 
+STATICFILES_DIRS = [
+    ('horizon/lib/angular',
+        xstatic.main.XStatic(xstatic.pkg.angular).base_dir),
+    ('horizon/lib/angular',
+        xstatic.main.XStatic(xstatic.pkg.angular_cookies).base_dir),
+    ('horizon/lib/angular',
+        xstatic.main.XStatic(xstatic.pkg.angular_mock).base_dir),
+    ('horizon/lib/bootstrap_datepicker',
+        xstatic.main.XStatic(xstatic.pkg.bootstrap_datepicker).base_dir),
+    ('bootstrap',
+        xstatic.main.XStatic(xstatic.pkg.bootstrap_scss).base_dir),
+    ('horizon/lib',
+        xstatic.main.XStatic(xstatic.pkg.d3).base_dir),
+    ('horizon/lib',
+        xstatic.main.XStatic(xstatic.pkg.hogan).base_dir),
+    ('horizon/lib/font-awesome',
+        xstatic.main.XStatic(xstatic.pkg.font_awesome).base_dir),
+    ('horizon/lib/jasmine-1.3.1',
+        xstatic.main.XStatic(xstatic.pkg.jasmine).base_dir),
+    ('horizon/lib/jquery',
+        xstatic.main.XStatic(xstatic.pkg.jquery).base_dir),
+    ('horizon/lib/jquery',
+        xstatic.main.XStatic(xstatic.pkg.jquery_migrate).base_dir),
+    ('horizon/lib/jquery',
+        xstatic.main.XStatic(xstatic.pkg.jquery_quicksearch).base_dir),
+    ('horizon/lib/jquery',
+        xstatic.main.XStatic(xstatic.pkg.jquery_tablesorter).base_dir),
+    ('horizon/lib/jsencrypt',
+        xstatic.main.XStatic(xstatic.pkg.jsencrypt).base_dir),
+    ('horizon/lib/qunit',
+        xstatic.main.XStatic(xstatic.pkg.qunit).base_dir),
+    ('horizon/lib',
+        xstatic.main.XStatic(xstatic.pkg.rickshaw).base_dir),
+    ('horizon/lib',
+        xstatic.main.XStatic(xstatic.pkg.spin).base_dir),
+]
+
+
+if xstatic.main.XStatic(xstatic.pkg.jquery_ui).version.startswith('1.10.'):
+    # The 1.10.x versions already contain the 'ui' directory.
+    STATICFILES_DIRS.append(('horizon/lib/jquery-ui',
+        xstatic.main.XStatic(xstatic.pkg.jquery_ui).base_dir))
+else:
+    # Newer versions dropped the directory, add it to keep the path the same.
+    STATICFILES_DIRS.append(('horizon/lib/jquery-ui/ui',
+        xstatic.main.XStatic(xstatic.pkg.jquery_ui).base_dir))
+
 COMPRESS_PRECOMPILERS = (
-    ('text/less', ('lesscpy {infile}')),
+    ('text/scss', 'django_pyscss.compressor.DjangoScssFilter'),
 )
 
 COMPRESS_CSS_FILTERS = (
@@ -153,6 +220,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    'django_pyscss',
+    'openstack_dashboard.django_pyscss_fix',
     'compressor',
     'horizon',
     'openstack_auth',
@@ -167,27 +236,38 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_SECURE = False
 SESSION_TIMEOUT = 1800
+# A token can be near the end af validity when a page starts loading, and
+# invalid during the rendering which can cause errors when a page load.
+# TOKEN_TIMEOUT_MARGIN defines a time in seconds we retrieve from token
+# validity to avoid this issue. You can adjust this time depending on the
+# performance of the infrastructure.
+TOKEN_TIMEOUT_MARGIN = 10
 
 # When using cookie-based sessions, log error when the session cookie exceeds
 # the following size (common browsers drop cookies above a certain size):
 SESSION_COOKIE_MAX_SIZE = 4093
 
 # when doing upgrades, it may be wise to stick to PickleSerializer
-# TODO(mrunge): remove after Icehouse
+# NOTE(berendt): Check during the K-cycle if this variable can be removed.
+#                https://bugs.launchpad.net/horizon/+bug/1349463
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
 
 LANGUAGES = (
+    ('de', 'German'),
     ('en', 'English'),
     ('en-au', 'Australian English'),
     ('en-gb', 'British English'),
     ('es', 'Spanish'),
     ('fr', 'French'),
+    ('hi', 'Hindi'),
     ('ja', 'Japanese'),
     ('ko', 'Korean (Korea)'),
     ('nl', 'Dutch (Netherlands)'),
     ('pl', 'Polish'),
     ('pt-br', 'Portuguese (Brazil)'),
+    ('sr', 'Serbian'),
     ('zh-cn', 'Simplified Chinese'),
+    ('zh-tw', 'Chinese (Taiwan)'),
 )
 LANGUAGE_CODE = 'en'
 LANGUAGE_COOKIE_NAME = 'horizon_language'
@@ -206,10 +286,33 @@ POLICY_FILES = {
     'compute': 'nova_policy.json',
     'volume': 'cinder_policy.json',
     'image': 'glance_policy.json',
+    'orchestration': 'heat_policy.json',
+    'network': 'neutron_policy.json',
 }
 
 SECRET_KEY = None
 LOCAL_PATH = None
+
+SECURITY_GROUP_RULES = {
+    'all_tcp': {
+        'name': _('All TCP'),
+        'ip_protocol': 'tcp',
+        'from_port': '1',
+        'to_port': '65535',
+    },
+    'all_udp': {
+        'name': _('All UDP'),
+        'ip_protocol': 'udp',
+        'from_port': '1',
+        'to_port': '65535',
+    },
+    'all_icmp': {
+        'name': _('All ICMP'),
+        'ip_protocol': 'icmp',
+        'from_port': '-1',
+        'to_port': '-1',
+    },
+}
 
 try:
     from local.local_settings import *  # noqa
@@ -254,6 +357,6 @@ if DEBUG:
 # during django reloads and an active user is logged in, the monkey
 # patch below will not otherwise be applied in time - resulting in developers
 # appearing to be logged out.  In typical production deployments this section
-# below may be ommited, though it should not be harmful
+# below may be omitted, though it should not be harmful
 from openstack_auth import utils as auth_utils
 auth_utils.patch_middleware_get_user()

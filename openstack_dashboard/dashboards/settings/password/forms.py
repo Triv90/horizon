@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Centrin Data Systems Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -39,6 +37,7 @@ class PasswordForm(forms.SelfHandlingForm):
                validators.password_validator_msg()})
     confirm_password = forms.CharField(label=_("Confirm new password"),
                             widget=forms.PasswordInput(render_value=False))
+    no_autocomplete = True
 
     def clean(self):
         '''Check to make sure password fields match.'''
@@ -70,5 +69,3 @@ class PasswordForm(forms.SelfHandlingForm):
         else:
             messages.error(request, _('Changing password is not supported.'))
             return False
-
-        return True

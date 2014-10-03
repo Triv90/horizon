@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -54,10 +52,24 @@ class OrchestrationPanels(horizon.PanelGroup):
 
 
 class DatabasePanels(horizon.PanelGroup):
-    name = _("Manage Databases")
+    name = _("Database")
     slug = "database"
     panels = ('databases',
               'database_backups',)
+
+
+class DataProcessingPanels(horizon.PanelGroup):
+    name = _("Data Processing")
+    slug = "data_processing"
+    panels = ('data_processing.clusters',
+              'data_processing.cluster_templates',
+              'data_processing.nodegroup_templates',
+              'data_processing.job_executions',
+              'data_processing.jobs',
+              'data_processing.job_binaries',
+              'data_processing.data_sources',
+              'data_processing.data_image_registry',
+              'data_processing.data_plugins',)
 
 
 class Project(horizon.Dashboard):
@@ -68,7 +80,8 @@ class Project(horizon.Dashboard):
         NetworkPanels,
         ObjectStorePanels,
         OrchestrationPanels,
-        DatabasePanels,)
+        DatabasePanels,
+        DataProcessingPanels,)
     default_panel = 'overview'
     supports_tenants = True
 

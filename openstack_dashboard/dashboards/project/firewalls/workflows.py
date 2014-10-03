@@ -1,4 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
 #    Copyright 2013, Big Switch Networks, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -19,7 +18,6 @@ from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
 from horizon import forms
-from horizon.utils import fields
 from horizon.utils import validators
 from horizon import workflows
 
@@ -47,13 +45,13 @@ class AddRuleAction(workflows.Action):
         label=_("Action"),
         choices=[('allow', _('ALLOW')),
                  ('deny', _('DENY'))],)
-    source_ip_address = fields.IPField(
+    source_ip_address = forms.IPField(
         label=_("Source IP Address/Subnet"),
-        version=fields.IPv4 | fields.IPv6,
+        version=forms.IPv4 | forms.IPv6,
         required=False, mask=True)
-    destination_ip_address = fields.IPField(
+    destination_ip_address = forms.IPField(
         label=_("Destination IP Address/Subnet"),
-        version=fields.IPv4 | fields.IPv6,
+        version=forms.IPv4 | forms.IPv6,
         required=False, mask=True)
     source_port = forms.CharField(
         max_length=80,
@@ -176,8 +174,7 @@ class SelectRulesStep(workflows.Step):
 
 class AddPolicyAction(workflows.Action):
     name = forms.CharField(max_length=80,
-                           label=_("Name"),
-                           required=True)
+                           label=_("Name"))
     description = forms.CharField(max_length=80,
                                   label=_("Description"),
                                   required=False)
@@ -239,14 +236,13 @@ class AddFirewallAction(workflows.Action):
     description = forms.CharField(max_length=80,
                                   label=_("Description"),
                                   required=False)
-    firewall_policy_id = forms.ChoiceField(label=_("Policy"),
-                                           required=True)
+    firewall_policy_id = forms.ChoiceField(label=_("Policy"))
     shared = forms.BooleanField(label=_("Shared"),
                                 initial=False,
                                 required=False)
-    admin_state_up = forms.BooleanField(label=_("Admin State"),
-                                        initial=True,
-                                        required=False)
+    # TODO(amotoki): make UP/DOWN translatable
+    admin_state_up = forms.ChoiceField(choices=[(True, 'UP'), (False, 'DOWN')],
+                                       label=_("Admin State"))
 
     def __init__(self, request, *args, **kwargs):
         super(AddFirewallAction, self).__init__(request, *args, **kwargs)
@@ -285,6 +281,7 @@ class AddFirewallStep(workflows.Step):
 
     def contribute(self, data, context):
         context = super(AddFirewallStep, self).contribute(data, context)
+        context['admin_state_up'] = (context['admin_state_up'] == 'True')
         return context
 
 

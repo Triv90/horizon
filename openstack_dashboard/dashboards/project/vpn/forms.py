@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013, Mirantis Inc
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -24,7 +22,6 @@ from django.utils.translation import ugettext_lazy as _
 from horizon import exceptions
 from horizon import forms
 from horizon import messages
-from horizon.utils import fields
 
 from openstack_dashboard import api
 
@@ -39,11 +36,14 @@ class UpdateVPNService(forms.SelfHandlingForm):
         widget=forms.TextInput(attrs={'readonly': 'readonly'}))
     description = forms.CharField(
         required=False, max_length=80, label=_("Description"))
-    admin_state_up = forms.BooleanField(label=_("Admin State"), required=False)
+    # TODO(amotoki): make UP/DOWN translatable
+    admin_state_up = forms.ChoiceField(choices=[(True, 'UP'), (False, 'DOWN')],
+                                       label=_("Admin State"))
 
     failure_url = 'horizon:project:vpn:index'
 
     def handle(self, request, context):
+        context['admin_state_up'] = (context['admin_state_up'] == 'True')
         try:
             data = {'vpnservice': {'name': context['name'],
                                    'description': context['description'],
@@ -93,7 +93,7 @@ class UpdateIKEPolicy(forms.SelfHandlingForm):
     lifetime_value = forms.IntegerField(
         min_value=60,
         label=_("Lifetime value for IKE keys"),
-        help_text=_("Equal to or more than 60"))
+        help_text=_("Equal to or greater than 60"))
     pfs = forms.ChoiceField(
         label=_("Perfect Forward Secrecy"),
         choices=[('group2', _('group2')),
@@ -164,7 +164,7 @@ class UpdateIPSecPolicy(forms.SelfHandlingForm):
     lifetime_value = forms.IntegerField(
         min_value=60,
         label=_("Lifetime value"),
-        help_text=_("Equal to or more than 60"))
+        help_text=_("Equal to or greater than 60"))
     pfs = forms.ChoiceField(
         label=_("Perfect Forward Secrecy"),
         choices=[('group2', _('group2')),
@@ -211,33 +211,34 @@ class UpdateIPSecSiteConnection(forms.SelfHandlingForm):
         widget=forms.TextInput(attrs={'readonly': 'readonly'}))
     description = forms.CharField(
         required=False, max_length=80, label=_("Description"))
-    peer_address = fields.IPField(
+    peer_address = forms.IPField(
         label=_("Peer gateway public IPv4/IPv6 Address or FQDN"),
         help_text=_("Peer gateway public IPv4/IPv6 address or FQDN for "
                     "the VPN Connection"),
-        version=fields.IPv4 | fields.IPv6,
+        version=forms.IPv4 | forms.IPv6,
         mask=False)
-    peer_id = fields.IPField(
+    peer_id = forms.IPField(
         label=_("Peer router identity for authentication (Peer ID)"),
         help_text=_("Peer router identity for authentication. "
                     "Can be IPv4/IPv6 address, e-mail, key ID, or FQDN"),
-        version=fields.IPv4 | fields.IPv6,
+        version=forms.IPv4 | forms.IPv6,
         mask=False)
-    peer_cidrs = fields.MultiIPField(
+    peer_cidrs = forms.MultiIPField(
         label=_("Remote peer subnet(s)"),
         help_text=_("Remote peer subnet(s) address(es) "
                     "with mask(s) in CIDR format "
                     "separated with commas if needed "
                     "(e.g. 20.1.0.0/24, 21.1.0.0/24)"),
-        version=fields.IPv4 | fields.IPv6,
+        version=forms.IPv4 | forms.IPv6,
         mask=True)
     psk = forms.CharField(
         max_length=80, label=_("Pre-Shared Key (PSK) string"))
     mtu = forms.IntegerField(
         min_value=68,
         label=_("Maximum Transmission Unit size for the connection"),
-        help_text=_("Equal to or more than 68 if the local subnet is IPv4. "
-                    "Equal to or more than 1280 if the local subnet is IPv6."))
+        help_text=_("Equal to or greater than 68 if the local subnet is IPv4. "
+                    "Equal to or greater than 1280 if the local subnet "
+                    "is IPv6."))
     dpd_action = forms.ChoiceField(
         label=_("Dead peer detection actions"),
         choices=[('hold', _('hold')),
@@ -257,11 +258,14 @@ class UpdateIPSecSiteConnection(forms.SelfHandlingForm):
         label=_("Initiator state"),
         choices=[('bi-directional', _('bi-directional')),
                  ('response-only', _('response-only'))])
-    admin_state_up = forms.BooleanField(label=_("Admin State"), required=False)
+    # TODO(amotoki): make UP/DOWN translatable
+    admin_state_up = forms.ChoiceField(choices=[(True, 'UP'), (False, 'DOWN')],
+                                       label=_("Admin State"))
 
     failure_url = 'horizon:project:vpn:index'
 
     def handle(self, request, context):
+        context['admin_state_up'] = (context['admin_state_up'] == 'True')
         try:
             data = {'ipsec_site_connection':
                 {'name': context['name'],

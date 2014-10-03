@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Canonical Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -55,12 +53,12 @@ def data(TEST):
                  'project_id': '2',
                  'enabled': True,
                  'domain_id': "2"}
-    TEST.ceilometer_users.add(users.User(users.UserManager(None),
+    TEST.ceilometer_users.add(users.User(None,
                                          ceilometer_user_dict1))
-    TEST.ceilometer_users.add(users.User(users.UserManager(None),
+    TEST.ceilometer_users.add(users.User(None,
                                          ceilometer_user_dict2))
 
-    #tenants
+    # Tenants.
     tenant_dict = {'id': "1",
                    'name': 'test_tenant',
                    'description': "a test tenant.",

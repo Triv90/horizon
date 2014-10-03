@@ -27,9 +27,20 @@ from openstack_dashboard.test.test_data import utils
 def create_stubbed_exception(cls, status_code=500):
     msg = "Expected failure."
 
-    def fake_init_exception(self, code, message, **kwargs):
-        self.code = code
-        self.message = message
+    def fake_init_exception(self, code=None, message=None, **kwargs):
+        if code is not None:
+            if hasattr(self, 'http_status'):
+                self.http_status = code
+            else:
+                self.code = code
+        self.message = message or self.__class__.message
+
+        try:
+            # Neutron sometimes updates the message with additional
+            # information, like a reason.
+            self.message = self.message % kwargs
+        except Exception:
+            pass  # We still have the main error message.
 
     def fake_str(self):
         return str(self.message)
@@ -62,7 +73,7 @@ def data(TEST):
     glance_exception = glance_exceptions.ClientException
     TEST.exceptions.glance = create_stubbed_exception(glance_exception)
 
-    ceilometer_exception = ceilometer_exceptions.ClientException
+    ceilometer_exception = ceilometer_exceptions.HTTPException
     TEST.exceptions.ceilometer = create_stubbed_exception(ceilometer_exception)
 
     neutron_exception = neutron_exceptions.NeutronClientException

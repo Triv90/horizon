@@ -2,7 +2,7 @@
 
 <h3>{% trans "Image Overview" %}</h3>
 
-<div class="info row-fluid detail">
+<div class="info row detail">
   <h4>{% trans "Info" %}</h4>
   <hr class="header_rule">
   <dl>
@@ -14,12 +14,14 @@
     {% endif %}
     <dt>{% trans "ID" %}</dt>
     <dd>{{ image.id|default:_("None") }}</dd>
+    <dt>{% trans "Owner" %}</dt>
+    <dd>{{ image.owner }}</dd>
     <dt>{% trans "Status" %}</dt>
     <dd>{{ image.status|default:_("Unknown")|title }}</dd>
     <dt>{% trans "Public" %}</dt>
-    <dd>{{ image.is_public }}</dd>
+    <dd>{{ image.is_public|yesno|capfirst }}</dd>
     <dt>{% trans "Protected" %}</dt>
-    <dd>{{ image.protected }}</dd>
+    <dd>{{ image.protected|yesno|capfirst }}</dd>
     <dt>{% trans "Checksum" %}</dt>
     <dd>{{ image.checksum }}</dd>
     <dt>{% trans "Created" %}</dt>
@@ -37,7 +39,7 @@
   </dl>
 </div>
 
-<div class="specs row-fluid detail">
+<div class="specs row detail">
   <h4>{% trans "Specs" %}</h4>
   <hr class="header_rule">
   <dl>
@@ -58,7 +60,7 @@
   </dl>
 </div>
 
-<div class="properties row-fluid detail">
+<div class="properties row detail">
   <h4>{% trans "Custom Properties" %}</h4>
   <hr class="header_rule">
   <dl>

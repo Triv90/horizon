@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
 # a copy of the License at
@@ -14,21 +12,20 @@
 
 import json
 import logging
+from operator import attrgetter
+
+from django.core.urlresolvers import reverse
+from django.core.urlresolvers import reverse_lazy
+from django.http import HttpResponse  # noqa
+from django.utils.translation import ugettext_lazy as _
+import django.views.generic
 
 from horizon import exceptions
 from horizon import forms
 from horizon import tables
 from horizon import tabs
 from horizon.utils import memoized
-
-from django.core.urlresolvers import reverse
-from django.core.urlresolvers import reverse_lazy
-from django.http import HttpResponse  # noqa
-from django.utils.translation import ugettext_lazy as _
-from django.views import generic
-
 from openstack_dashboard import api
-
 from openstack_dashboard.dashboards.project.stacks \
     import api as project_api
 from openstack_dashboard.dashboards.project.stacks \
@@ -46,13 +43,41 @@ class IndexView(tables.DataTableView):
     table_class = project_tables.StacksTable
     template_name = 'project/stacks/index.html'
 
+    def __init__(self, *args, **kwargs):
+        super(IndexView, self).__init__(*args, **kwargs)
+        self._more = None
+
+    def has_prev_data(self, table):
+        return self._prev
+
+    def has_more_data(self, table):
+        return self._more
+
     def get_data(self):
-        request = self.request
+        stacks = []
+        prev_marker = self.request.GET.get(
+            project_tables.StacksTable._meta.prev_pagination_param)
+        if prev_marker is not None:
+            sort_dir = 'asc'
+            marker = prev_marker
+        else:
+            sort_dir = 'desc'
+            marker = self.request.GET.get(
+                project_tables.StacksTable._meta.pagination_param)
         try:
-            stacks = api.heat.stacks_list(self.request)
+            stacks, self._more, self._prev = api.heat.stacks_list(
+                self.request,
+                marker=marker,
+                paginate=True,
+                sort_dir=sort_dir)
+            if prev_marker is not None:
+                stacks = sorted(stacks, key=attrgetter('creation_time'),
+                                reverse=True)
         except Exception:
-            exceptions.handle(request, _('Unable to retrieve stack list.'))
-            stacks = []
+            self._prev = False
+            self._more = False
+            msg = _('Unable to retrieve stack list.')
+            exceptions.handle(self.request, msg)
         return stacks
 
 
@@ -236,7 +261,7 @@ class ResourceView(tabs.TabView):
             request, resource=resource, metadata=metadata, **kwargs)
 
 
-class JSONView(generic.View):
+class JSONView(django.views.generic.View):
     def get(self, request, stack_id=''):
         return HttpResponse(project_api.d3_data(request, stack_id=stack_id),
                             content_type="application/json")

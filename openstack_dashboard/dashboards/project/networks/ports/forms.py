@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 NEC Corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -35,15 +33,28 @@ class UpdatePort(forms.SelfHandlingForm):
     name = forms.CharField(max_length=255,
                            label=_("Name"),
                            required=False)
-    admin_state = forms.BooleanField(label=_("Admin State"), required=False)
+    # TODO(amotoki): make UP/DOWN translatable
+    admin_state = forms.ChoiceField(choices=[(True, 'UP'), (False, 'DOWN')],
+                                    label=_("Admin State"))
     failure_url = 'horizon:project:networks:detail'
 
+    def __init__(self, request, *args, **kwargs):
+        super(UpdatePort, self).__init__(request, *args, **kwargs)
+        if api.neutron.is_extension_supported(request, 'mac-learning'):
+            self.fields['mac_state'] = forms.BooleanField(
+                label=_("Mac Learning State"), required=False)
+
     def handle(self, request, data):
+        data['admin_state'] = (data['admin_state'] == 'True')
         try:
             LOG.debug('params = %s' % data)
+            extension_kwargs = {}
+            if 'mac_state' in data:
+                extension_kwargs['mac_learning_enabled'] = data['mac_state']
             port = api.neutron.port_update(request, data['port_id'],
                                            name=data['name'],
-                                           admin_state_up=data['admin_state'])
+                                           admin_state_up=data['admin_state'],
+                                           **extension_kwargs)
             msg = _('Port %s was successfully updated.') % data['port_id']
             LOG.debug(msg)
             messages.success(request, msg)

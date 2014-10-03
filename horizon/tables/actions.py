@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,14 +14,20 @@
 
 from collections import defaultdict
 import logging
-import new
+import types
+import warnings
 
 from django.conf import settings
 from django.core import urlresolvers
 from django import shortcuts
+from django.template.loader import render_to_string  # noqa
+from django.utils.datastructures import SortedDict
 from django.utils.functional import Promise  # noqa
+from django.utils.http import urlencode  # noqa
 from django.utils.translation import pgettext_lazy
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
+import six
 
 from horizon import exceptions
 from horizon import messages
@@ -34,7 +38,7 @@ from horizon.utils import html
 LOG = logging.getLogger(__name__)
 
 # For Bootstrap integration; can be overridden in settings.
-ACTION_CSS_CLASSES = ("btn", "btn-small")
+ACTION_CSS_CLASSES = ("btn", "btn-default", "btn-sm")
 STRING_SEPARATOR = "__"
 
 
@@ -80,9 +84,9 @@ class BaseActionMetaClass(type):
         return klass
 
 
+@six.add_metaclass(BaseActionMetaClass)
 class BaseAction(html.HTMLElement):
     """Common base class for all ``Action`` classes."""
-    __metaclass__ = BaseActionMetaClass
 
     def __init__(self, **kwargs):
         super(BaseAction, self).__init__()
@@ -145,7 +149,7 @@ class BaseAction(html.HTMLElement):
 
     def get_default_classes(self):
         """Returns a list of the default classes for the action. Defaults to
-        ``["btn", "btn-small"]``.
+        ``["btn", "btn-default", "btn-sm"]``.
         """
         return getattr(settings, "ACTION_CSS_CLASSES", ACTION_CSS_CLASSES)
 
@@ -164,6 +168,9 @@ class BaseAction(html.HTMLElement):
 
     def __repr__(self):
         return "<%s: %s>" % (self.__class__.__name__, self.name)
+
+    def associate_with_table(self, table):
+        self.table = table
 
 
 class Action(BaseAction):
@@ -258,6 +265,7 @@ class Action(BaseAction):
         self.verbose_name_plural = kwargs.get('verbose_name_plural',
             "%ss" % self.verbose_name)
         self.allowed_data_types = kwargs.get('allowed_data_types', [])
+        self.icon = kwargs.get('icon', None)
 
         if attrs:
             self.attrs.update(attrs)
@@ -287,12 +295,12 @@ class Action(BaseAction):
         if not has_single:
             def single(self, data_table, request, object_id):
                 return self.handle(data_table, request, [object_id])
-            self.single = new.instancemethod(single, self)
+            self.single = types.MethodType(single, self)
 
         if not has_multiple and self.handles_multiple:
             def multiple(self, data_table, request, object_ids):
                 return self.handle(data_table, request, object_ids)
-            self.multiple = new.instancemethod(multiple, self)
+            self.multiple = types.MethodType(multiple, self)
 
     def get_param_name(self):
         """Returns the full POST parameter name for this action.
@@ -332,6 +340,7 @@ class LinkAction(BaseAction):
     """
     # class attribute name is used for ordering of Actions in table
     name = "link"
+    ajax = False
 
     def __init__(self, attrs=None, **kwargs):
         super(LinkAction, self).__init__(**kwargs)
@@ -341,12 +350,32 @@ class LinkAction(BaseAction):
         self.verbose_name = kwargs.get('verbose_name', self.name.title())
         self.url = kwargs.get('url', None)
         self.allowed_data_types = kwargs.get('allowed_data_types', [])
+        self.icon = kwargs.get('icon', None)
+        self.kwargs = kwargs
 
         if not kwargs.get('verbose_name', None):
             raise NotImplementedError('A LinkAction object must have a '
                                       'verbose_name attribute.')
         if attrs:
             self.attrs.update(attrs)
+        if self.ajax:
+            self.classes = list(self.classes) + ['ajax-update']
+
+    def get_ajax_update_url(self):
+        table_url = self.table.get_absolute_url()
+        params = urlencode(
+            SortedDict([("action", self.name), ("table", self.table.name)])
+        )
+        return "%s?%s" % (table_url, params)
+
+    def render(self):
+        return render_to_string("horizon/common/_data_table_table_action.html",
+                                {"action": self})
+
+    def associate_with_table(self, table):
+        super(LinkAction, self).associate_with_table(table)
+        if self.ajax:
+            self.attrs['data-update-url'] = self.get_ajax_update_url()
 
     def get_link_url(self, datum=None):
         """Returns the final URL based on the value of ``url``.
@@ -395,7 +424,20 @@ class FilterAction(BaseAction):
 
     .. attribute: filter_type
 
-        A string representing the type of this filter. Default: ``"query"``.
+        A string representing the type of this filter. If this is set to
+        ``"server"`` then ``filter_choices`` must also be provided.
+        Default: ``"query"``.
+
+    .. attribute: filter_choices
+
+        Required for server type filters. A tuple of tuples representing the
+        filter options. Tuple composition should evaluate to (string, string,
+        boolean), representing the filter parameter, display value, and whether
+        or not it should be applied to the API request as an API query
+        attribute. API type filters do not need to be accounted for in the
+        filter method since the API will do the filtering. However, server
+        type filters in general will need to be performed in the filter method.
+        By default this attribute is not provided.
 
     .. attribute: needs_preloading
 
@@ -417,8 +459,15 @@ class FilterAction(BaseAction):
         self.name = kwargs.get('name', self.name)
         self.verbose_name = kwargs.get('verbose_name', _("Filter"))
         self.filter_type = kwargs.get('filter_type', "query")
+        self.filter_choices = kwargs.get('filter_choices')
         self.needs_preloading = kwargs.get('needs_preloading', False)
         self.param_name = kwargs.get('param_name', 'q')
+        self.icon = "search"
+
+        if self.filter_type == 'server' and self.filter_choices is None:
+            raise NotImplementedError('A FilterAction object with the '
+                'filter_type attribute set to "server" must also have a '
+                'filter_choices attribute.')
 
     def get_param_name(self):
         """Returns the full query parameter name for this action.
@@ -427,11 +476,6 @@ class FilterAction(BaseAction):
         ``{{ table.name }}__{{ action.name }}__{{ action.param_name }}``.
         """
         return "__".join([self.table.name, self.name, self.param_name])
-
-    def get_default_classes(self):
-        classes = super(FilterAction, self).get_default_classes()
-        classes += ("btn-search",)
-        return classes
 
     def assign_type_string(self, table, data, type_string):
         for datum in data:
@@ -448,8 +492,8 @@ class FilterAction(BaseAction):
                 # and actions won't allow it. Need to be fixed in the future.
                 cls_name = self.__class__.__name__
                 raise NotImplementedError("You must define a %s method "
-                                            "for %s data type in %s." %
-                                            (func_name, data_type, cls_name))
+                                          "for %s data type in %s." %
+                                          (func_name, data_type, cls_name))
             _data = filter_func(table, data, filter_string)
             self.assign_type_string(table, _data, data_type)
             filtered_data.extend(_data)
@@ -461,8 +505,18 @@ class FilterAction(BaseAction):
         This method must be overridden by subclasses and return
         the filtered data.
         """
-        raise NotImplementedError("The filter method has not been "
-                                  "implemented by %s." % self.__class__)
+        return data
+
+    def is_api_filter(self, filter_field):
+        """Determine if the given filter field should be used as an
+        API filter.
+        """
+        if self.filter_type == 'server':
+            for choice in self.filter_choices:
+                if (choice[0] == filter_field and len(choice) > 2 and
+                        choice[2] is True):
+                    return True
+        return False
 
 
 class FixedFilterAction(FilterAction):
@@ -497,9 +551,7 @@ class FixedFilterAction(FilterAction):
         * ``value``: Value returned when the button is clicked. This value is
           passed to ``filter()`` as ``filter_string``.
         """
-        raise NotImplementedError("The get_fixed_buttons method has "
-                                  "not been implemented by %s." %
-                                  self.__class__)
+        return []
 
     def categorize(self, table, images):
         """Override to separate images into categories.
@@ -507,8 +559,7 @@ class FixedFilterAction(FilterAction):
         Return a dict with a key for the value of each fixed button,
         and a value that is a list of images in that category.
         """
-        raise NotImplementedError("The categorize method has not been "
-                                  "implemented by %s." % self.__class__)
+        return {}
 
 
 class BatchAction(Action):
@@ -520,7 +571,13 @@ class BatchAction(Action):
 
        An internal name for this action.
 
-    .. attribute:: action_present
+    .. method:: action_present
+
+       Method accepting an integer/long parameter and returning the display
+       forms of the name properly pluralised (depending on the integer) and
+       translated in a string or tuple/list.
+
+    .. attribute:: action_present (PendingDeprecation)
 
        String or tuple/list. The display forms of the name.
        Should be a transitive verb, capitalized and translated. ("Delete",
@@ -535,23 +592,43 @@ class BatchAction(Action):
        By passing a complete action name you allow translators to control
        the order of words as they want.
 
-    .. attribute:: action_past
+       NOTE: action_present attribute is bad for translations and should be
+       avoided. Please use the action_present method instead.
+       This form is kept for legacy.
+
+    .. method:: action_past
+
+       Method accepting an integer/long parameter and returning the display
+       forms of the name properly pluralised (depending on the integer) and
+       translated in a string or tuple/list.
+
+    .. attribute:: action_past (PendingDeprecation)
 
        String or tuple/list. The past tense of action_present. ("Deleted",
        "Rotated", etc.) If tuple or list - then
        setting self.current_past_action = n will set the current active item
        from the list(action_past[n])
 
+       NOTE: action_past attribute is bad for translations and should be
+       avoided. Please use the action_past method instead.
+       This form is kept for legacy.
+
     .. attribute:: data_type_singular
 
-       A display name for the type of data that receives the
-       action. ("Key Pair", "Floating IP", etc.)
+       Optional display name (if the data_type method is not defined) for the
+       type of data that receives the action. ("Key Pair", "Floating IP", etc.)
 
     .. attribute:: data_type_plural
 
-       Optional plural word for the type of data being acted
-       on. Defaults to appending 's'. Relying on the default is bad
-       for translations and should not be done.
+       Optional plural word (if the data_type method is not defined) for the
+       type of data being acted on. Defaults to appending 's'. Relying on the
+       default is bad for translations and should not be done, so it's absence
+       will raise a DeprecationWarning. It is currently kept as optional for
+       legacy code.
+
+       NOTE: data_type_singular and data_type_plural attributes are bad for
+       translations and should be avoided. Please use the action_present and
+       action_past methods. This form is kept for legacy.
 
     .. attribute:: success_url
 
@@ -561,18 +638,56 @@ class BatchAction(Action):
 
     def __init__(self, **kwargs):
         super(BatchAction, self).__init__(**kwargs)
+
+        action_present_method = False
+        if hasattr(self, 'action_present'):
+            if callable(self.action_present):
+                action_present_method = True
+            else:
+                warnings.warn(PendingDeprecationWarning(
+                    'The %s BatchAction class must have an action_present '
+                    'method instead of attribute.' % self.__class__.__name__
+                ))
+
+        action_past_method = False
+        if hasattr(self, 'action_past'):
+            if callable(self.action_past):
+                action_past_method = True
+            else:
+                warnings.warn(PendingDeprecationWarning(
+                    'The %s BatchAction class must have an action_past '
+                    'method instead of attribute.' % self.__class__.__name__
+                ))
+
+        action_methods = action_present_method and action_past_method
+        has_action_method = action_present_method or action_past_method
+
+        if has_action_method and not action_methods:
+            raise NotImplementedError(
+                'The %s BatchAction class must have both action_past and'
+                'action_present methods.' % self.__class__.__name__
+            )
+
+        if not action_methods:
+            if not kwargs.get('data_type_singular'):
+                raise NotImplementedError(
+                    'The %s BatchAction class must have a data_type_singular '
+                    'attribute when action_past and action_present attributes '
+                    'are used.' % self.__class__.__name__
+                )
+            self.data_type_singular = kwargs.get('data_type_singular')
+            self.data_type_plural = kwargs.get('data_type_plural',
+                                               self.data_type_singular + 's')
+
+        # TODO(ygbo): get rid of self.use_action_method once action_present and
+        # action_past are changed to methods handling plurals.
+        self.use_action_method = action_methods
+
         self.success_url = kwargs.get('success_url', None)
-        self.data_type_singular = kwargs.get('data_type_singular', None)
-        self.data_type_plural = kwargs.get('data_type_plural',
-            self.data_type_singular + 's')
         # If setting a default name, don't initialize it too early
         self.verbose_name = kwargs.get('verbose_name', self._get_action_name)
         self.verbose_name_plural = kwargs.get('verbose_name_plural',
             lambda: self._get_action_name('plural'))
-
-        if not kwargs.get('data_type_singular', None):
-            raise NotImplementedError('A batchAction object must have a '
-                                      'data_type_singular attribute.')
 
         self.current_present_action = 0
         self.current_past_action = 0
@@ -589,18 +704,50 @@ class BatchAction(Action):
     def _get_action_name(self, items=None, past=False):
         """Builds combinations like 'Delete Object' and 'Deleted
         Objects' based on the number of items and `past` flag.
+
+        :param items:
+
+            A list or tuple of items (or container with a __len__ method) to
+            count the number of concerned items for which this method is
+            called.
+            When this method is called for a single item (by the BatchAction
+            itself), this parameter can be omitted and the number of items
+            will be considered as "one".
+            If we want to evaluate to "zero" this parameter must not be omitted
+            (and should be an empty container).
+
+        :param past:
+
+            Boolean flag indicating if the action took place in the past.
+            By default a present action is considered.
         """
         action_type = "past" if past else "present"
+        if items is None:
+            # Called without items parameter (by a single instance.)
+            count = 1
+        else:
+            count = len(items)
+
+        # TODO(ygbo): get rid of self.use_action_method once action_present and
+        # action_past are changed to methods handling plurals.
         action_attr = getattr(self, "action_%s" % action_type)
+        if self.use_action_method:
+            action_attr = action_attr(count)
         if isinstance(action_attr, (basestring, Promise)):
             action = action_attr
         else:
             toggle_selection = getattr(self, "current_%s_action" % action_type)
             action = action_attr[toggle_selection]
-        if items is None or len(items) == 1:
-            data_type = self.data_type_singular
-        else:
-            data_type = self.data_type_plural
+
+        if self.use_action_method:
+            return action
+        # TODO(ygbo): get rid of all this bellow once action_present and
+        # action_past are changed to methods handling plurals.
+        data_type = ungettext_lazy(
+            self.data_type_singular,
+            self.data_type_plural,
+            count
+        )
         if '%(data_type)s' in action:
             # If full action string is specified, use action as format string.
             msgstr = action
@@ -617,8 +764,6 @@ class BatchAction(Action):
 
         Return values are discarded, errors raised are caught and logged.
         """
-        raise NotImplementedError('action() must be defined for %s'
-                                  % self.__class__.__name__)
 
     def update(self, request, datum):
         """Switches the action verbose name, if needed."""
@@ -647,7 +792,7 @@ class BatchAction(Action):
                 continue
             try:
                 self.action(request, datum_id)
-                #Call update to invoke changes if needed
+                # Call update to invoke changes if needed
                 self.update(request, datum)
                 action_success.append(datum_display)
                 self.success_ids.append(datum_id)
@@ -690,24 +835,93 @@ class BatchAction(Action):
 
 
 class DeleteAction(BatchAction):
-    """Doc missing."""
+    """A table action used to perform delete operations on table data.
+
+    .. attribute:: name
+
+        A short name or "slug" representing this action.
+        Defaults to 'delete'
+
+    .. method:: action_present
+
+        Method accepting an integer/long parameter and returning the display
+        forms of the name properly pluralised (depending on the integer) and
+        translated in a string or tuple/list.
+
+    .. attribute:: action_present (PendingDeprecation)
+
+        A string containing the transitive verb describing the delete action.
+        Defaults to 'Delete'
+
+        NOTE: action_present attribute is bad for translations and should be
+        avoided. Please use the action_present method instead.
+        This form is kept for legacy.
+
+    .. method:: action_past
+
+        Method accepting an integer/long parameter and returning the display
+        forms of the name properly pluralised (depending on the integer) and
+        translated in a string or tuple/list.
+
+    .. attribute:: action_past (PendingDeprecation)
+
+        A string set to the past tense of action_present.
+        Defaults to 'Deleted'
+
+        NOTE: action_past attribute is bad for translations and should be
+        avoided. Please use the action_past method instead.
+        This form is kept for legacy.
+
+    .. attribute:: data_type_singular (PendingDeprecation)
+
+        A string used to name the data to be deleted.
+
+    .. attribute:: data_type_plural (PendingDeprecation)
+
+        Optional. Plural of ``data_type_singular``.
+        Defaults to ``data_type_singular`` appended with an 's'.  Relying on
+        the default is bad for translations and should not be done, so it's
+        absence will raise a DeprecationWarning. It is currently kept as
+        optional for legacy code.
+
+        NOTE: data_type_singular and data_type_plural attributes are bad for
+        translations and should be avoided. Please use the action_present and
+        action_past methods. This form is kept for legacy.
+    """
+
     name = "delete"
 
     def __init__(self, **kwargs):
         super(DeleteAction, self).__init__(**kwargs)
         self.name = kwargs.get('name', self.name)
-        self.action_present = kwargs.get('action_present', _("Delete"))
-        self.action_past = kwargs.get('action_past', _("Deleted"))
+        if not hasattr(self, "action_present"):
+            self.action_present = kwargs.get('action_present', _("Delete"))
+        if not hasattr(self, "action_past"):
+            self.action_past = kwargs.get('action_past', _("Deleted"))
+        self.icon = "remove"
 
     def action(self, request, obj_id):
+        """Action entry point. Overrides base class' action method.
+
+        Accepts a single object id passing it over to the delete method
+        responsible for the object's destruction.
+        """
         return self.delete(request, obj_id)
 
     def delete(self, request, obj_id):
-        raise NotImplementedError("DeleteAction must define a delete method.")
+        """Required. Deletes an object referenced by obj_id.
+
+        Override to provide delete functionality specific to your data.
+        """
 
     def get_default_classes(self):
+        """Appends ``btn-danger`` to the action's default css classes.
+
+        This method ensures the corresponding button is highlighted
+        as a trigger for a potentially dangerous action.
+        """
         classes = super(DeleteAction, self).get_default_classes()
-        classes += ("btn-danger", "btn-delete")
+        classes += ("btn-danger",)
         return classes
 
 
@@ -727,8 +941,6 @@ class UpdateAction(object):
         This method must implements saving logic of the inline edited table
         cell.
         """
-        raise NotImplementedError(
-            "UpdateAction must define a update_cell method.")
 
     def allowed(self, request, datum, cell):
         """Determine whether updating is allowed for the current request.

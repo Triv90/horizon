@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 NEC Corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,6 +18,9 @@ from django.utils.translation import ugettext_lazy as _
 
 from horizon import tables
 
+from openstack_dashboard import api
+from openstack_dashboard import policy
+
 
 def get_fixed_ips(port):
     template_name = 'project/networks/ports/_port_ips.html'
@@ -36,11 +37,13 @@ def get_attached(port):
         return _('Detached')
 
 
-class UpdatePort(tables.LinkAction):
+class UpdatePort(policy.PolicyTargetMixin, tables.LinkAction):
     name = "update"
     verbose_name = _("Edit Port")
     url = "horizon:project:networks:editport"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
+    policy_rules = (("network", "update_port"),)
 
     def get_link_url(self, port):
         network_id = self.table.kwargs['network_id']
@@ -56,6 +59,8 @@ class PortsTable(tables.DataTable):
     status = tables.Column("status", verbose_name=_("Status"))
     admin_state = tables.Column("admin_state",
                                 verbose_name=_("Admin State"))
+    mac_state = tables.Column("mac_state", empty_value=api.neutron.OFF_STATE,
+                              verbose_name=_("MAC Learning State"))
 
     def get_object_display(self, port):
         return port.id
@@ -64,3 +69,10 @@ class PortsTable(tables.DataTable):
         name = "ports"
         verbose_name = _("Ports")
         row_actions = (UpdatePort,)
+
+    def __init__(self, request, data=None, needs_form_wrapper=None, **kwargs):
+        super(PortsTable, self).__init__(request, data=data,
+                                         needs_form_wrapper=needs_form_wrapper,
+                                         **kwargs)
+        if not api.neutron.is_extension_supported(request, 'mac-learning'):
+            del self.columns['mac_state']

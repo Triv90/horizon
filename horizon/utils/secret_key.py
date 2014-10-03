@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,12 +13,11 @@
 #    under the License.
 
 
-from __future__ import with_statement  # Python 2.5 compliance
-
-import lockfile
 import os
 import random
 import string
+
+import lockfile
 
 
 class FilePermissionError(Exception):
@@ -38,7 +35,7 @@ def generate_key(key_length=64):
         choice = random.SystemRandom().choice
     else:
         choice = random.choice
-    return ''.join(map(lambda x: choice(string.digits + string.letters),
+    return ''.join(map(lambda x: choice(string.digits + string.ascii_letters),
                    range(key_length)))
 
 

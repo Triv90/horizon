@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -15,18 +13,18 @@
 # @author: Abishek Subramanian, Cisco Systems, Inc.
 # @author: Sergey Sudakovich,   Cisco Systems, Inc.
 
-from django.conf.urls import patterns  # noqa
-from django.conf.urls import url  # noqa
+from django.conf.urls import patterns
+from django.conf.urls import url
 
 from openstack_dashboard.dashboards.router.nexus1000v import views
 
+
 urlpatterns = patterns('',
     url(r'^$', views.IndexView.as_view(), name='index'),
-    #Network Profile
+    # Network Profile
     url(r'^network_profile/create$', views.CreateNetworkProfileView.as_view(),
         name='create_network_profile'),
     url(r'^network_profile/(?P<profile_id>[^/]+)/update$',
         views.UpdateNetworkProfileView.as_view(),
         name='update_network_profile'),
-
 )

@@ -16,12 +16,11 @@ from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
 from horizon import tabs
-
 from openstack_dashboard.api import base
+from openstack_dashboard.api import cinder
 from openstack_dashboard.api import keystone
 from openstack_dashboard.api import neutron
 from openstack_dashboard.api import nova
-
 from openstack_dashboard.dashboards.admin.info import constants
 from openstack_dashboard.dashboards.admin.info import tables
 
@@ -47,6 +46,7 @@ class NovaServicesTab(tabs.TableTab):
     name = _("Compute Services")
     slug = "nova_services"
     template_name = constants.INFO_DETAIL_TEMPLATE_NAME
+    permissions = ('openstack.services.compute',)
 
     def get_nova_services_data(self):
         try:
@@ -54,8 +54,26 @@ class NovaServicesTab(tabs.TableTab):
         except Exception:
             msg = _('Unable to get nova services list.')
             exceptions.check_message(["Connection", "refused"], msg)
-            raise
+            exceptions.handle(self.request, msg)
+            services = []
+        return services
 
+
+class CinderServicesTab(tabs.TableTab):
+    table_classes = (tables.CinderServicesTable,)
+    name = _("Block Storage Services")
+    slug = "cinder_services"
+    template_name = constants.INFO_DETAIL_TEMPLATE_NAME
+    permissions = ('openstack.services.volume',)
+
+    def get_cinder_services_data(self):
+        try:
+            services = cinder.service_list(self.tab_group.request)
+        except Exception:
+            msg = _('Unable to get cinder services list.')
+            exceptions.check_message(["Connection", "refused"], msg)
+            exceptions.handle(self.request, msg)
+            services = []
         return services
 
 
@@ -66,7 +84,12 @@ class NetworkAgentsTab(tabs.TableTab):
     template_name = constants.INFO_DETAIL_TEMPLATE_NAME
 
     def allowed(self, request):
-        return base.is_service_enabled(request, 'network')
+        try:
+            return (base.is_service_enabled(request, 'network') and
+                    neutron.is_extension_supported(request, 'agent'))
+        except Exception:
+            exceptions.handle(request, _('Unable to get network agents info.'))
+            return False
 
     def get_network_agents_data(self):
         try:
@@ -74,13 +97,13 @@ class NetworkAgentsTab(tabs.TableTab):
         except Exception:
             msg = _('Unable to get network agents list.')
             exceptions.check_message(["Connection", "refused"], msg)
-            raise
-
+            exceptions.handle(self.request, msg)
+            agents = []
         return agents
 
 
 class SystemInfoTabs(tabs.TabGroup):
     slug = "system_info"
-    tabs = (ServicesTab, NovaServicesTab,
+    tabs = (ServicesTab, NovaServicesTab, CinderServicesTab,
             NetworkAgentsTab)
     sticky = True

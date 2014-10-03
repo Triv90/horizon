@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -15,13 +13,9 @@
 import copy
 
 from django.conf import settings
-from django.core import urlresolvers
 from django.test.utils import override_settings
-from django.utils.importlib import import_module  # noqa
 
 import horizon
-from horizon import base
-from horizon import conf
 
 from openstack_dashboard.dashboards.admin.info import panel as info_panel
 from openstack_dashboard.test import helpers as test
@@ -31,7 +25,7 @@ import openstack_dashboard.test.test_plugins.panel_config
 from openstack_dashboard.utils import settings as util_settings
 
 
-HORIZON_CONFIG = copy.copy(settings.HORIZON_CONFIG)
+HORIZON_CONFIG = copy.deepcopy(settings.HORIZON_CONFIG)
 INSTALLED_APPS = list(settings.INSTALLED_APPS)
 
 util_settings.update_dashboards([
@@ -41,36 +35,7 @@ util_settings.update_dashboards([
 
 @override_settings(HORIZON_CONFIG=HORIZON_CONFIG,
                    INSTALLED_APPS=INSTALLED_APPS)
-class PanelPluginTests(test.TestCase):
-
-    def setUp(self):
-        super(PanelPluginTests, self).setUp()
-        self.old_horizon_config = conf.HORIZON_CONFIG
-        conf.HORIZON_CONFIG = conf.LazySettings()
-        base.Horizon._urls()
-        # Trigger discovery, registration, and URLconf generation if it
-        # hasn't happened yet.
-        self.client.get("/")
-
-    def tearDown(self):
-        super(PanelPluginTests, self).tearDown()
-        conf.HORIZON_CONFIG = self.old_horizon_config
-        # Destroy our singleton and re-create it.
-        base.HorizonSite._instance = None
-        del base.Horizon
-        base.Horizon = base.HorizonSite()
-        self._reload_urls()
-
-    def _reload_urls(self):
-        """Clears out the URL caches, reloads the root urls module, and
-        re-triggers the autodiscovery mechanism for Horizon. Allows URLs
-        to be re-calculated after registering new dashboards. Useful
-        only for testing and should never be used on a live site.
-        """
-        urlresolvers.clear_url_caches()
-        reload(import_module(settings.ROOT_URLCONF))
-        base.Horizon._urls()
-
+class PanelPluginTests(test.PluginTestCase):
     def test_add_panel(self):
         dashboard = horizon.get_dashboard("admin")
         self.assertIn(plugin_panel.PluginPanel,
@@ -83,4 +48,4 @@ class PanelPluginTests(test.TestCase):
 
     def test_default_panel(self):
         dashboard = horizon.get_dashboard("admin")
-        self.assertEqual(dashboard.default_panel, 'defaults')
+        self.assertEqual('defaults', dashboard.default_panel)

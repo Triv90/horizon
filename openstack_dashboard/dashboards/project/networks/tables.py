@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 NEC Corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -19,12 +17,13 @@ from django.core.urlresolvers import reverse
 from django import template
 from django.template import defaultfilters as filters
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
 
 from horizon import exceptions
 from horizon import tables
 
 from openstack_dashboard import api
-
+from openstack_dashboard import policy
 
 LOG = logging.getLogger(__name__)
 
@@ -39,9 +38,25 @@ class CheckNetworkEditable(object):
         return True
 
 
-class DeleteNetwork(CheckNetworkEditable, tables.DeleteAction):
-    data_type_singular = _("Network")
-    data_type_plural = _("Networks")
+class DeleteNetwork(policy.PolicyTargetMixin, CheckNetworkEditable,
+                    tables.DeleteAction):
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Network",
+            u"Delete Networks",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Deleted Network",
+            u"Deleted Networks",
+            count
+        )
+
+    policy_rules = (("network", "delete_network"),)
 
     def delete(self, request, network_id):
         try:
@@ -66,21 +81,30 @@ class CreateNetwork(tables.LinkAction):
     name = "create"
     verbose_name = _("Create Network")
     url = "horizon:project:networks:create"
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
+    policy_rules = (("network", "create_network"),)
 
 
-class EditNetwork(CheckNetworkEditable, tables.LinkAction):
+class EditNetwork(policy.PolicyTargetMixin, CheckNetworkEditable,
+                  tables.LinkAction):
     name = "update"
     verbose_name = _("Edit Network")
     url = "horizon:project:networks:update"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
+    policy_rules = (("network", "update_network"),)
 
 
-class CreateSubnet(CheckNetworkEditable, tables.LinkAction):
+class CreateSubnet(policy.PolicyTargetMixin, CheckNetworkEditable,
+                   tables.LinkAction):
     name = "subnet"
     verbose_name = _("Add Subnet")
     url = "horizon:project:networks:addsubnet"
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
+    policy_rules = (("network", "create_subnet"),)
+    policy_target_attrs = (("network:project_id", "tenant_id"),)
 
 
 def get_subnets(network):

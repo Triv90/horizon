@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -36,6 +34,9 @@ from horizon.utils import memoized
 from horizon import workflows
 
 from openstack_dashboard import api
+
+from openstack_dashboard.dashboards.project.instances \
+    import console as project_console
 from openstack_dashboard.dashboards.project.instances \
     import forms as project_forms
 from openstack_dashboard.dashboards.project.instances \
@@ -56,12 +57,12 @@ class IndexView(tables.DataTableView):
     def get_data(self):
         marker = self.request.GET.get(
             project_tables.InstancesTable._meta.pagination_param, None)
+        search_opts = self.get_filters({'marker': marker, 'paginate': True})
         # Gather our instances
         try:
             instances, self._more = api.nova.server_list(
                 self.request,
-                search_opts={'marker': marker,
-                             'paginate': True})
+                search_opts=search_opts)
         except Exception:
             self._more = False
             instances = []
@@ -86,7 +87,8 @@ class IndexView(tables.DataTableView):
 
             try:
                 # TODO(gabriel): Handle pagination.
-                images, more = api.glance.image_list_detailed(self.request)
+                images, more, prev = api.glance.image_list_detailed(
+                    self.request)
             except Exception:
                 images = []
                 exceptions.handle(self.request, ignore=True)
@@ -103,10 +105,6 @@ class IndexView(tables.DataTableView):
                     if isinstance(instance.image, dict):
                         if instance.image.get('id') in image_map:
                             instance.image = image_map[instance.image['id']]
-                    else:
-                        # Instance from volume returns a string
-                        instance.image = {'name':
-                                instance.image if instance.image else _("-")}
 
                 try:
                     flavor_id = instance.flavor["id"]
@@ -121,6 +119,15 @@ class IndexView(tables.DataTableView):
                     msg = _('Unable to retrieve instance size information.')
                     exceptions.handle(self.request, msg)
         return instances
+
+    def get_filters(self, filters):
+        filter_field = self.table.get_filter_field()
+        filter_action = self.table._meta._filter_action
+        if filter_action.is_api_filter(filter_field):
+            filter_string = self.table.get_filter_string()
+            if filter_field and filter_string:
+                filters[filter_field] = filter_string
+        return filters
 
 
 class LaunchInstanceView(workflows.WorkflowView):
@@ -151,10 +158,9 @@ def console(request, instance_id):
 
 def vnc(request, instance_id):
     try:
-        console = api.nova.server_vnc_console(request, instance_id)
         instance = api.nova.server_get(request, instance_id)
-        return shortcuts.redirect(console.url +
-                ("&title=%s(%s)" % (instance.name, instance_id)))
+        console_url = project_console.get_console(request, 'VNC', instance)
+        return shortcuts.redirect(console_url)
     except Exception:
         redirect = reverse("horizon:project:instances:index")
         msg = _('Unable to get VNC console for instance "%s".') % instance_id
@@ -163,10 +169,9 @@ def vnc(request, instance_id):
 
 def spice(request, instance_id):
     try:
-        console = api.nova.server_spice_console(request, instance_id)
         instance = api.nova.server_get(request, instance_id)
-        return shortcuts.redirect(console.url +
-                ("&title=%s(%s)" % (instance.name, instance_id)))
+        console_url = project_console.get_console(request, 'SPICE', instance)
+        return shortcuts.redirect(console_url)
     except Exception:
         redirect = reverse("horizon:project:instances:index")
         msg = _('Unable to get SPICE console for instance "%s".') % instance_id
@@ -175,10 +180,9 @@ def spice(request, instance_id):
 
 def rdp(request, instance_id):
     try:
-        console = api.nova.server_rdp_console(request, instance_id)
         instance = api.nova.server_get(request, instance_id)
-        return shortcuts.redirect(console.url +
-                ("&title=%s(%s)" % (instance.name, instance_id)))
+        console_url = project_console.get_console(request, 'RDP', instance)
+        return shortcuts.redirect(console_url)
     except Exception:
         redirect = reverse("horizon:project:instances:index")
         msg = _('Unable to get RDP console for instance "%s".') % instance_id

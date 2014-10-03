@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -121,14 +119,20 @@ class APIDictWrapper(object):
     def __getitem__(self, item):
         try:
             return getattr(self, item)
-        except AttributeError as e:
+        except (AttributeError, TypeError) as e:
             # caller is expecting a KeyError
             raise KeyError(e)
+
+    def __contains__(self, item):
+        try:
+            return hasattr(self, item)
+        except TypeError:
+            return False
 
     def get(self, item, default=None):
         try:
             return getattr(self, item)
-        except AttributeError:
+        except (AttributeError, TypeError):
             return default
 
     def __repr__(self):
@@ -177,7 +181,7 @@ class QuotaSet(Sequence):
 
     def __add__(self, other):
         """Merge another QuotaSet into this one. Existing quotas are
-        not overriden.
+        not overridden.
         """
         if not isinstance(other, QuotaSet):
             msg = "Can only add QuotaSet to QuotaSet, " \
@@ -231,19 +235,29 @@ ENDPOINT_TYPE_TO_INTERFACE = {
 
 def get_url_for_service(service, region, endpoint_type):
     identity_version = get_version_from_service(service)
-    for endpoint in service['endpoints']:
-        # ignore region for identity
-        if service['type'] == 'identity' or region == endpoint['region']:
-            try:
-                if identity_version < 3:
-                    return endpoint[endpoint_type]
-                else:
-                    interface = \
-                        ENDPOINT_TYPE_TO_INTERFACE.get(endpoint_type, '')
-                    if endpoint['interface'] == interface:
-                        return endpoint['url']
-            except (IndexError, KeyError):
-                return None
+    available_endpoints = [endpoint for endpoint in service['endpoints']
+                           if region == endpoint['region']]
+    """if we are dealing with the identity service and there is no endpoint
+    in the current region, it is okay to use the first endpoint for any
+    identity service endpoints and we can assume that it is global
+    """
+    if service['type'] == 'identity' and not available_endpoints:
+        available_endpoints = [endpoint for endpoint in service['endpoints']]
+
+    for endpoint in available_endpoints:
+        try:
+            if identity_version < 3:
+                return endpoint[endpoint_type]
+            else:
+                interface = \
+                    ENDPOINT_TYPE_TO_INTERFACE.get(endpoint_type, '')
+                if endpoint['interface'] == interface:
+                    return endpoint['url']
+        except (IndexError, KeyError):
+            """it could be that the current endpoint just doesn't match the
+            type, continue trying the next one
+            """
+            pass
     return None
 
 

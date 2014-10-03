@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Kylin, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -31,7 +29,7 @@ ALL_NOVA_QUOTA_FIELDS = quotas.NOVA_QUOTA_FIELDS + quotas.MISSING_QUOTA_FIELDS
 
 class UpdateDefaultQuotasAction(workflows.Action):
     ifcb_label = _("Injected File Content Bytes")
-    ifpb_label = _("Injected File Path Bytes")
+    ifpb_label = _("Length of Injected File Path")
     injected_file_content_bytes = forms.IntegerField(min_value=-1,
                                                      label=ifcb_label)
     metadata_items = forms.IntegerField(min_value=-1,
@@ -49,8 +47,9 @@ class UpdateDefaultQuotasAction(workflows.Action):
     cores = forms.IntegerField(min_value=-1, label=_("VCPUs"))
     security_groups = forms.IntegerField(min_value=-1,
                                          label=_("Security Groups"))
-    gigabytes = forms.IntegerField(min_value=-1, label=_("Gigabytes"))
-    snapshots = forms.IntegerField(min_value=-1, label=_("Snapshots"))
+    gigabytes = forms.IntegerField(min_value=-1,
+        label=_("Total Size of Volumes and Snapshots (GB)"))
+    snapshots = forms.IntegerField(min_value=-1, label=_("Volume Snapshots"))
     volumes = forms.IntegerField(min_value=-1, label=_("Volumes"))
 
     def __init__(self, request, *args, **kwargs):

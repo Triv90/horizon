@@ -11,17 +11,18 @@
 # under the License.
 
 import math
+import re
 
 from django.conf import settings
 from django.contrib.auth import logout  # noqa
 from django import http
-from django.utils.encoding import force_unicode
+from django.utils.encoding import force_text
 from django.utils.functional import lazy  # noqa
 from django.utils import translation
 
 
 def _lazy_join(separator, strings):
-    return separator.join([force_unicode(s)
+    return separator.join([force_text(s)
                            for s in strings])
 
 lazy_join = lazy(_lazy_join, unicode)
@@ -38,7 +39,7 @@ def add_logout_reason(request, response, reason):
     lang = translation.get_language_from_request(request)
     with translation.override(lang):
         reason = unicode(reason).encode('utf-8')
-        response.set_cookie('logout_reason', reason, max_age=30)
+        response.set_cookie('logout_reason', reason, max_age=10)
 
 
 def logout_with_message(request, msg):
@@ -57,8 +58,17 @@ def logout_with_message(request, msg):
 def get_page_size(request, default=20):
     session = request.session
     cookies = request.COOKIES
-    return int(session.get('horizon_pagesize',
-                           cookies.get('horizon_pagesize',
-                                       getattr(settings,
-                                               'API_RESULT_PAGE_SIZE',
-                                               default))))
+    try:
+        page_size = int(session.get('horizon_pagesize',
+                                    cookies.get('horizon_pagesize',
+                                                getattr(settings,
+                                                        'API_RESULT_PAGE_SIZE',
+                                                        default))))
+    except ValueError:
+        page_size = session['horizon_pagesize'] = int(default)
+    return page_size
+
+
+def natural_sort(attr):
+    return lambda x: [int(s) if s.isdigit() else s for s in
+                      re.split(r'(\d+)', getattr(x, attr, x))]

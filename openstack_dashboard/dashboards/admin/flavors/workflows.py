@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -35,7 +33,7 @@ class CreateFlavorInfoAction(workflows.Action):
                              "Leave this field blank or use 'auto' to set "
                              "a random UUID4.")
     name = forms.RegexField(label=_("Name"),
-                            max_length=25,
+                            max_length=255,
                             regex=r'^[\w\.\- ]+$',
                             error_messages={'invalid': _('Name may only '
                                 'contain letters, numbers, underscores, '
@@ -47,19 +45,20 @@ class CreateFlavorInfoAction(workflows.Action):
                              help_text=_flavor_id_help_text)
     vcpus = forms.IntegerField(label=_("VCPUs"),
                             min_value=1)
-    memory_mb = forms.IntegerField(label=_("RAM MB"),
+    memory_mb = forms.IntegerField(label=_("RAM (MB)"),
                             min_value=1)
-    disk_gb = forms.IntegerField(label=_("Root Disk GB"),
+    disk_gb = forms.IntegerField(label=_("Root Disk (GB)"),
                             min_value=0)
-    eph_gb = forms.IntegerField(label=_("Ephemeral Disk GB"),
+    eph_gb = forms.IntegerField(label=_("Ephemeral Disk (GB)"),
                             min_value=0)
-    swap_mb = forms.IntegerField(label=_("Swap Disk MB"),
+    swap_mb = forms.IntegerField(label=_("Swap Disk (MB)"),
                             min_value=0)
 
     class Meta:
-        name = _("Flavor Info")
-        help_text = _("From here you can create a new "
-                      "flavor to organize instance resources.")
+        name = _("Flavor Information")
+        help_text = _("Flavors define the sizes for RAM, disk, number of "
+                      "cores, and other resources and can be selected when "
+                      "users deploy instances.")
 
     def clean(self):
         cleaned_data = super(CreateFlavorInfoAction, self).clean()
@@ -154,13 +153,11 @@ class UpdateFlavorAccessAction(workflows.MembershipAction):
 
 class UpdateFlavorAccess(workflows.UpdateMembersStep):
     action_class = UpdateFlavorAccessAction
-    help_text = _("You can control access to this flavor by moving projects "
-                  "from the left column to the right column. Only projects "
-                  "in the right column can use the flavor. If there are no "
-                  "projects in the right column, all projects can use the "
-                  "flavor.")
+    help_text = _("Select the projects where the flavors will be used. If no "
+                  "projects are selected, then the flavor will be available "
+                  "in all projects.")
     available_list_title = _("All Projects")
-    members_list_title = _("Selected projects")
+    members_list_title = _("Selected Projects")
     no_available_text = _("No projects found.")
     no_members_text = _("No projects selected. "
                         "All projects can use the flavor.")
@@ -224,9 +221,11 @@ class UpdateFlavorInfoAction(CreateFlavorInfoAction):
     flavor_id = forms.CharField(widget=forms.widgets.HiddenInput)
 
     class Meta:
-        name = _("Flavor Info")
+        name = _("Flavor Information")
         slug = 'update_info'
-        help_text = _("From here you can edit the flavor details.")
+        help_text = _("Edit the flavor details. Flavors define the sizes for "
+                      "RAM, disk, number of cores, and other resources. "
+                      "Flavors are selected when users deploy instances.")
 
     def clean(self):
         name = self.cleaned_data.get('name')

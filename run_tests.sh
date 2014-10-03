@@ -6,7 +6,7 @@ set -o errexit
 # Increment me any time the environment should be rebuilt.
 # This includes dependency changes, directory renames, etc.
 # Simple integer sequence: 1, 2, 3...
-environment_version=42
+environment_version=47
 #--------------------------------------------------------#
 
 function usage {
@@ -22,16 +22,21 @@ function usage {
   echo "                           environment. Useful when dependencies have"
   echo "                           been added."
   echo "  -m, --manage             Run a Django management command."
-  echo "  --makemessages           Update all translation files."
+  echo "  --makemessages           Create/Update English translation files."
   echo "  --compilemessages        Compile all translation files."
   echo "  -p, --pep8               Just run pep8"
+  echo "  -8, --pep8-changed [<basecommit>]"
+  echo "                           Just run PEP8 and HACKING compliance check"
+  echo "                           on files changed since HEAD~1 (or <basecommit>)"
   echo "  -P, --no-pep8            Don't run pep8 by default"
   echo "  -t, --tabs               Check for tab characters in files."
   echo "  -y, --pylint             Just run pylint"
+  echo "  -j, --jshint             Just run jshint"
   echo "  -q, --quiet              Run non-interactively. (Relatively) quiet."
   echo "                           Implies -V if -N is not set."
   echo "  --only-selenium          Run only the Selenium unit tests"
   echo "  --with-selenium          Run unit tests including Selenium tests"
+  echo "  --selenium-headless      Run Selenium tests headless"
   echo "  --integration            Run the integration tests (requires a running "
   echo "                           OpenStack environment)"
   echo "  --runserver              Run the Django development server for"
@@ -63,16 +68,19 @@ command_wrapper=""
 destroy=0
 force=0
 just_pep8=0
+just_pep8_changed=0
 no_pep8=0
 just_pylint=0
 just_docs=0
 just_tabs=0
+just_jshint=0
 never_venv=0
 quiet=0
 restore_env=0
 runserver=0
 only_selenium=0
 with_selenium=0
+selenium_headless=0
 integration=0
 testopts=""
 testargs=""
@@ -96,8 +104,10 @@ function process_option {
     -V|--virtual-env) always_venv=1; never_venv=0;;
     -N|--no-virtual-env) always_venv=0; never_venv=1;;
     -p|--pep8) just_pep8=1;;
+    -8|--pep8-changed) just_pep8_changed=1;;
     -P|--no-pep8) no_pep8=1;;
     -y|--pylint) just_pylint=1;;
+    -j|--jshint) just_jshint=1;;
     -f|--force) force=1;;
     -t|--tabs) just_tabs=1;;
     -q|--quiet) quiet=1;;
@@ -107,6 +117,7 @@ function process_option {
     --compilemessages) compilemessages=1;;
     --only-selenium) only_selenium=1;;
     --with-selenium) with_selenium=1;;
+    --selenium-headless) selenium_headless=1;;
     --integration) integration=1;;
     --docs) just_docs=1;;
     --runserver) runserver=1;;
@@ -142,8 +153,13 @@ function run_pylint {
   fi
 }
 
-function run_pep8 {
-  echo "Running flake8 ..."
+function run_jshint {
+  echo "Running jshint ..."
+  jshint horizon/static/horizon/js
+  jshint horizon/static/horizon/tests
+}
+
+function warn_on_flake8_without_venv {
   set +o errexit
   ${command_wrapper} python -c "import hacking" 2>/dev/null
   no_hacking=$?
@@ -153,13 +169,31 @@ function run_pep8 {
       echo "OpenStack hacking is not installed on your host. Its detection will be missed." >&2
       echo "Please install or use virtual env if you need OpenStack hacking detection." >&2
   fi
+}
+
+function run_pep8 {
+  echo "Running flake8 ..."
+  warn_on_flake8_without_venv
   DJANGO_SETTINGS_MODULE=openstack_dashboard.test.settings ${command_wrapper} flake8
+}
+
+function run_pep8_changed {
+    # NOTE(gilliard) We want use flake8 to check the entirety of every file that has
+    # a change in it. Unfortunately the --filenames argument to flake8 only accepts
+    # file *names* and there are no files named (eg) "nova/compute/manager.py".  The
+    # --diff argument behaves surprisingly as well, because although you feed it a
+    # diff, it actually checks the file on disk anyway.
+    local base_commit=${testargs:-HEAD~1}
+    files=$(git diff --name-only $base_commit | tr '\n' ' ')
+    echo "Running flake8 on ${files}"
+    warn_on_flake8_without_venv
+    diff -u --from-file /dev/null ${files} | DJANGO_SETTINGS_MODULE=openstack_dashboard.test.settings ${command_wrapper} flake8 --diff
+    exit
 }
 
 function run_sphinx {
     echo "Building sphinx..."
-    export DJANGO_SETTINGS_MODULE=openstack_dashboard.settings
-    ${command_wrapper} sphinx-build -b html doc/source doc/build/html
+    DJANGO_SETTINGS_MODULE=openstack_dashboard.test.settings ${command_wrapper} python setup.py build_sphinx
     echo "Build complete."
 }
 
@@ -300,6 +334,10 @@ function run_tests {
       testopts="$testopts --exclude-dir=openstack_dashboard/test/integration_tests"
   fi
 
+  if [ $selenium_headless -eq 1 ]; then
+    export SELENIUM_HEADLESS=1
+  fi
+
   if [ -z "$testargs" ]; then
      run_tests_all
   else
@@ -319,8 +357,8 @@ function run_tests_all {
     export NOSE_HTML_OUT_FILE='horizon_nose_results.html'
   fi
   if [ $with_coverage -eq 1 ]; then
-    ${command_wrapper} coverage erase
-    coverage_run="coverage run -p"
+    ${command_wrapper} python -m coverage.__main__ erase
+    coverage_run="python -m coverage.__main__ run -p"
   fi
   ${command_wrapper} ${coverage_run} $root/manage.py test horizon --settings=horizon.test.settings $testopts
   # get results of the Horizon tests
@@ -337,9 +375,9 @@ function run_tests_all {
 
   if [ $with_coverage -eq 1 ]; then
     echo "Generating coverage reports"
-    ${command_wrapper} coverage combine
-    ${command_wrapper} coverage xml -i --include="horizon/*,openstack_dashboard/*" --omit='/usr*,setup.py,*egg*,.venv/*'
-    ${command_wrapper} coverage html -i --include="horizon/*,openstack_dashboard/*" --omit='/usr*,setup.py,*egg*,.venv/*' -d reports
+    ${command_wrapper} python -m coverage.__main__ combine
+    ${command_wrapper} python -m coverage.__main__ xml -i --include="horizon/*,openstack_dashboard/*" --omit='/usr*,setup.py,*egg*,.venv/*'
+    ${command_wrapper} python -m coverage.__main__ html -i --include="horizon/*,openstack_dashboard/*" --omit='/usr*,setup.py,*egg*,.venv/*' -d reports
   fi
   # Remove the leftover coverage files from the -p flag earlier.
   rm -f .coverage.*
@@ -362,14 +400,22 @@ function run_tests_all {
 function run_integration_tests {
   export INTEGRATION_TESTS=1
 
+  if [ $selenium_headless -eq 1 ]; then
+    export SELENIUM_HEADLESS=1
+  fi
+
   echo "Running Horizon integration tests..."
-  ${command_wrapper} nosetests openstack_dashboard/test/integration_tests/tests
+  if [ -z "$testargs" ]; then
+      ${command_wrapper} nosetests openstack_dashboard/test/integration_tests/tests
+  else
+      ${command_wrapper} nosetests $testargs
+  fi
   exit 0
 }
 
 function run_makemessages {
   OPTS="-l en --no-obsolete"
-  DASHBOARD_OPTS="--extension=html,txt,csv --ignore=openstack/common/*"
+  DASHBOARD_OPTS="--extension=html,txt,csv --ignore=openstack"
   echo -n "horizon: "
   cd horizon
   ${command_wrapper} $root/manage.py makemessages $OPTS
@@ -393,6 +439,9 @@ function run_compilemessages {
   ${command_wrapper} $root/manage.py compilemessages
   DASHBOARD_RESULT=$?
   cd ..
+  # English is the source language, so compiled catalogs are unnecessary.
+  rm -vf horizon/locale/en/LC_MESSAGES/django*.mo
+  rm -vf openstack_dashboard/locale/en/LC_MESSAGES/django.mo
   exit $(($HORIZON_PY_RESULT || $DASHBOARD_RESULT))
 }
 
@@ -469,9 +518,20 @@ if [ $just_pep8 -eq 1 ]; then
     exit $?
 fi
 
+if [ $just_pep8_changed -eq 1 ]; then
+    run_pep8_changed
+    exit $?
+fi
+
 # Pylint
 if [ $just_pylint -eq 1 ]; then
     run_pylint
+    exit $?
+fi
+
+# Jshint
+if [ $just_jshint -eq 1 ]; then
+    run_jshint
     exit $?
 fi
 

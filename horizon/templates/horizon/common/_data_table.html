@@ -4,8 +4,8 @@
   {% if needs_form_wrapper %}<form action="{{ table.get_full_url }}" method="POST">{% csrf_token %}{% endif %}
   {% with columns=table.get_columns rows=table.get_rows %}
 {% block table %}
-  <table id="{{ table.name }}" class="table table-bordered table-striped datatable">
-    <thead>
+   <table id="{{ table.slugify_name }}" class="{% block table_css_classes %}table table-bordered table-striped datatable {{ table.css_classes }}{% endblock %}">
+   <thead>
   {% block table_caption %}
       <tr class='table_caption'>
         <th class='table_header' colspan='{{ columns|length }}'>
@@ -61,9 +61,14 @@
       <tr>
         <td colspan="{{ table.get_columns|length }}">
           <span class="table_count">{% blocktrans count counter=rows|length %}Displaying {{ counter }} item{% plural %}Displaying {{ counter }} items{% endblocktrans %}</span>
+          {% if table.has_prev_data or table.has_more_data %}
+            <span class="spacer">|</span>
+          {% endif %}
+          {% if table.has_prev_data %}
+            <a href="?{{ table.get_prev_pagination_string }}">{% trans "&laquo;&nbsp;Prev" %}</a>
+          {% endif %}
           {% if table.has_more_data %}
-          <span class="spacer">|</span>
-          <a href="?{{ table.get_pagination_string }}">More&nbsp;&raquo;</a>
+            <a href="?{{ table.get_pagination_string }}">{% trans "Next&nbsp;&raquo;" %}</a>
           {% endif %}
         </td>
       </tr>

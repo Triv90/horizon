@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,6 +16,7 @@ from django.template.defaultfilters import title  # noqa
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import tables
+from openstack_dashboard import api
 
 
 def pretty_service_names(name):
@@ -33,15 +32,19 @@ class DownloadEC2(tables.LinkAction):
     name = "download_ec2"
     verbose_name = _("Download EC2 Credentials")
     verbose_name_plural = _("Download EC2 Credentials")
-    classes = ("btn-download",)
+    icon = "download"
     url = "horizon:project:access_and_security:api_access:ec2"
+    policy_rules = (("compute", "compute_extension:certificates"),)
+
+    def allowed(self, request, datum=None):
+        return api.base.is_service_enabled(request, 'ec2')
 
 
 class DownloadOpenRC(tables.LinkAction):
     name = "download_openrc"
     verbose_name = _("Download OpenStack RC File")
     verbose_name_plural = _("Download OpenStack RC File")
-    classes = ("btn-download",)
+    icon = "download"
     url = "horizon:project:access_and_security:api_access:openrc"
 
 

@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,13 +13,14 @@
 #    under the License.
 
 from datetime import datetime  # noqa
-import pytz
+import string
 
 from django.conf import settings
 from django import shortcuts
 from django.utils import encoding
 from django.utils import translation
 from django.utils.translation import ugettext_lazy as _
+import pytz
 
 from horizon import forms
 from horizon import messages
@@ -51,6 +50,7 @@ class UserSettingsForm(forms.SelfHandlingForm):
         def get_language_display_name(code, desc):
             try:
                 desc = translation.get_language_info(code)['name_local']
+                desc = string.capwords(desc)
             except KeyError:
                 # If a language is not defined in django.conf.locale.LANG_INFO
                 # get_language_info raises KeyError
@@ -100,6 +100,6 @@ class UserSettingsForm(forms.SelfHandlingForm):
 
         with translation.override(lang_code):
             messages.success(request,
-                             encoding.force_unicode(_("Settings saved.")))
+                             encoding.force_text(_("Settings saved.")))
 
         return response

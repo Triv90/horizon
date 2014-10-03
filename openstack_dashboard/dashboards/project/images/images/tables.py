@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -21,6 +19,7 @@ from django.core.urlresolvers import reverse
 from django.template import defaultfilters as filters
 from django.utils.http import urlencode
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
 
 from horizon import tables
 from horizon.utils.memoized import memoized  # noqa
@@ -35,7 +34,8 @@ class LaunchImage(tables.LinkAction):
     name = "launch_image"
     verbose_name = _("Launch")
     url = "horizon:project:instances:launch"
-    classes = ("btn-launch", "ajax-modal")
+    classes = ("ajax-modal", "btn-launch")
+    icon = "cloud-upload"
     policy_rules = (("compute", "compute:create"),)
 
     def get_link_url(self, datum):
@@ -57,8 +57,22 @@ class LaunchImage(tables.LinkAction):
 
 
 class DeleteImage(tables.DeleteAction):
-    data_type_singular = _("Image")
-    data_type_plural = _("Images")
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Image",
+            u"Delete Images",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Deleted Image",
+            u"Deleted Images",
+            count
+        )
+
     policy_rules = (("image", "delete_image"),)
 
     def allowed(self, request, image=None):
@@ -78,7 +92,8 @@ class CreateImage(tables.LinkAction):
     name = "create"
     verbose_name = _("Create Image")
     url = "horizon:project:images:images:create"
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
     policy_rules = (("image", "add_image"),)
 
 
@@ -86,7 +101,8 @@ class EditImage(tables.LinkAction):
     name = "edit"
     verbose_name = _("Edit")
     url = "horizon:project:images:images:update"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
     policy_rules = (("image", "modify_image"),)
 
     def allowed(self, request, image=None):
@@ -102,7 +118,8 @@ class CreateVolumeFromImage(tables.LinkAction):
     name = "create_volume_from_image"
     verbose_name = _("Create Volume")
     url = "horizon:project:volumes:volumes:create"
-    classes = ("ajax-modal", "btn-camera")
+    classes = ("ajax-modal",)
+    icon = "camera"
     policy_rules = (("volume", "volume:create"),)
 
     def get_link_url(self, datum):
@@ -225,6 +242,9 @@ class ImagesTable(tables.DataTable):
                               empty_value=False,
                               filters=(filters.yesno, filters.capfirst))
     disk_format = tables.Column(get_format, verbose_name=_("Format"))
+    size = tables.Column("size",
+                         filters=(filters.filesizeformat,),
+                         verbose_name=_("Size"))
 
     class Meta:
         name = "images"

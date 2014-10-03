@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 NEC Corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -19,6 +17,7 @@ import logging
 from django.core.urlresolvers import reverse
 from django.template import defaultfilters as filters
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
 
 from horizon import exceptions
 from horizon import tables
@@ -26,14 +25,29 @@ from horizon import tables
 from openstack_dashboard import api
 from openstack_dashboard.dashboards.project.networks \
     import tables as project_tables
-
+from openstack_dashboard import policy
 
 LOG = logging.getLogger(__name__)
 
 
-class DeleteNetwork(tables.DeleteAction):
-    data_type_singular = _("Network")
-    data_type_plural = _("Networks")
+class DeleteNetwork(policy.PolicyTargetMixin, tables.DeleteAction):
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Network",
+            u"Delete Networks",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Deleted Network",
+            u"Deleted Networks",
+            count
+        )
+
+    policy_rules = (("network", "delete_network"),)
 
     def delete(self, request, obj_id):
         try:
@@ -49,17 +63,21 @@ class CreateNetwork(tables.LinkAction):
     name = "create"
     verbose_name = _("Create Network")
     url = "horizon:admin:networks:create"
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
+    policy_rules = (("network", "create_network"),)
 
 
-class EditNetwork(tables.LinkAction):
+class EditNetwork(policy.PolicyTargetMixin, tables.LinkAction):
     name = "update"
     verbose_name = _("Edit Network")
     url = "horizon:admin:networks:update"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
+    policy_rules = (("network", "update_network"),)
 
 
-#def _get_subnets(network):
+# def _get_subnets(network):
 #    cidrs = [subnet.get('cidr') for subnet in network.subnets]
 #    return ','.join(cidrs)
 
@@ -70,6 +88,8 @@ class NetworksTable(tables.DataTable):
                          link='horizon:admin:networks:detail')
     subnets = tables.Column(project_tables.get_subnets,
                             verbose_name=_("Subnets Associated"),)
+    num_agents = tables.Column("num_agents",
+                               verbose_name=_("DHCP Agents"))
     shared = tables.Column("shared", verbose_name=_("Shared"),
                            filters=(filters.yesno, filters.capfirst))
     status = tables.Column("status", verbose_name=_("Status"))
@@ -81,3 +101,11 @@ class NetworksTable(tables.DataTable):
         verbose_name = _("Networks")
         table_actions = (CreateNetwork, DeleteNetwork)
         row_actions = (EditNetwork, DeleteNetwork)
+
+    def __init__(self, request, data=None, needs_form_wrapper=None, **kwargs):
+        super(NetworksTable, self).__init__(request, data=data,
+                                        needs_form_wrapper=needs_form_wrapper,
+                                        **kwargs)
+        if not api.neutron.is_extension_supported(request,
+                                                  'dhcp_agent_scheduler'):
+            del self.columns['num_agents']

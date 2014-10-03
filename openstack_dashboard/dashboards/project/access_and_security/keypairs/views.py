@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -64,8 +62,11 @@ class DownloadView(TemplateView):
 
 
 class GenerateView(View):
-    def get(self, request, keypair_name=None):
+    def get(self, request, keypair_name=None, optional=None):
         try:
+            if optional == "regenerate":
+                api.nova.keypair_delete(request, keypair_name)
+
             keypair = api.nova.keypair_create(request, keypair_name)
         except Exception:
             redirect = reverse('horizon:project:access_and_security:index')

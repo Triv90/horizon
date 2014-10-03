@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -19,10 +17,10 @@
 #    under the License.
 
 import django
-from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.forms import widgets
 from django import http
+from django.test.utils import override_settings
 
 from mox import IsA  # noqa
 
@@ -35,6 +33,7 @@ from openstack_dashboard.usage import quotas
 
 
 VOLUME_INDEX_URL = reverse('horizon:project:volumes:index')
+VOLUME_VOLUMES_TAB_URL = reverse('horizon:project:volumes:volumes_tab')
 
 
 class VolumeViewTests(test.TestCase):
@@ -71,11 +70,11 @@ class VolumeViewTests(test.TestCase):
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                                        filters={'is_public': True,
                                                 'status': 'active'}) \
-                  .AndReturn([self.images.list(), False])
+                  .AndReturn([self.images.list(), False, False])
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                             filters={'property-owner_id': self.tenant.id,
                                      'status': 'active'}) \
-                  .AndReturn([[], False])
+                  .AndReturn([[], False, False])
         cinder.availability_zone_list(IsA(http.HttpRequest)).AndReturn(
             self.cinder_availability_zones.list())
 
@@ -101,7 +100,7 @@ class VolumeViewTests(test.TestCase):
         url = reverse('horizon:project:volumes:volumes:create')
         res = self.client.post(url, formData)
 
-        redirect_url = reverse('horizon:project:volumes:index')
+        redirect_url = VOLUME_VOLUMES_TAB_URL
         self.assertRedirectsNoFollow(res, redirect_url)
 
     @test.create_stubs({cinder: ('volume_create',
@@ -134,11 +133,11 @@ class VolumeViewTests(test.TestCase):
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                                        filters={'is_public': True,
                                                 'status': 'active'}) \
-                  .AndReturn([self.images.list(), False])
+                  .AndReturn([self.images.list(), False, False])
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                             filters={'property-owner_id': self.tenant.id,
                                      'status': 'active'}) \
-                  .AndReturn([[], False])
+                  .AndReturn([[], False, False])
         cinder.volume_list(IsA(
             http.HttpRequest)).AndReturn(self.cinder_volumes.list())
         quotas.tenant_limit_usages(IsA(http.HttpRequest)).\
@@ -165,7 +164,7 @@ class VolumeViewTests(test.TestCase):
         url = reverse('horizon:project:volumes:volumes:create')
         res = self.client.post(url, formData)
 
-        redirect_url = reverse('horizon:project:volumes:index')
+        redirect_url = VOLUME_VOLUMES_TAB_URL
         self.assertRedirectsNoFollow(res, redirect_url)
 
     @test.create_stubs({cinder: ('volume_create',
@@ -214,7 +213,7 @@ class VolumeViewTests(test.TestCase):
                                          "snapshot_id=" + str(snapshot.id)]),
                                formData)
 
-        redirect_url = reverse('horizon:project:volumes:index')
+        redirect_url = VOLUME_VOLUMES_TAB_URL
         self.assertRedirectsNoFollow(res, redirect_url)
 
     @test.create_stubs({cinder: ('volume_create',
@@ -260,11 +259,11 @@ class VolumeViewTests(test.TestCase):
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                                        filters={'is_public': True,
                                                 'status': 'active'}) \
-                  .AndReturn([self.images.list(), False])
+                  .AndReturn([self.images.list(), False, False])
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                             filters={'property-owner_id': self.tenant.id,
                                      'status': 'active'}) \
-                  .AndReturn([[], False])
+                  .AndReturn([[], False, False])
 
         cinder.volume_create(IsA(http.HttpRequest),
                              formData['size'],
@@ -279,7 +278,7 @@ class VolumeViewTests(test.TestCase):
         self.mox.ReplayAll()
 
         url = reverse('horizon:project:volumes:volumes:create')
-        redirect_url = reverse('horizon:project:volumes:index')
+        redirect_url = VOLUME_VOLUMES_TAB_URL
         res = self.client.post(url, formData)
         self.assertNoFormErrors(res)
         self.assertMessageCount(info=1)
@@ -317,11 +316,11 @@ class VolumeViewTests(test.TestCase):
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                                        filters={'is_public': True,
                                                 'status': 'active'}) \
-                  .AndReturn([self.images.list(), False])
+                  .AndReturn([self.images.list(), False, False])
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                             filters={'property-owner_id': self.tenant.id,
                                      'status': 'active'}) \
-                  .AndReturn([[], False])
+                  .AndReturn([[], False, False])
         cinder.volume_list(IsA(
             http.HttpRequest)).AndReturn(self.cinder_volumes.list())
         quotas.tenant_limit_usages(IsA(http.HttpRequest)).\
@@ -351,7 +350,7 @@ class VolumeViewTests(test.TestCase):
         url = reverse('horizon:project:volumes:volumes:create')
         res = self.client.post(url, formData)
 
-        redirect_url = reverse('horizon:project:volumes:index')
+        redirect_url = VOLUME_VOLUMES_TAB_URL
         self.assertRedirectsNoFollow(res, redirect_url)
 
     @test.create_stubs({cinder: ('volume_snapshot_get',
@@ -444,7 +443,7 @@ class VolumeViewTests(test.TestCase):
                                          "image_id=" + str(image.id)]),
                                formData)
 
-        redirect_url = reverse('horizon:project:volumes:index')
+        redirect_url = VOLUME_VOLUMES_TAB_URL
         self.assertRedirectsNoFollow(res, redirect_url)
 
     @test.create_stubs({cinder: ('volume_create',
@@ -479,11 +478,11 @@ class VolumeViewTests(test.TestCase):
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                                        filters={'is_public': True,
                                                 'status': 'active'}) \
-                  .AndReturn([self.images.list(), False])
+                  .AndReturn([self.images.list(), False, False])
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                             filters={'property-owner_id': self.tenant.id,
                                      'status': 'active'}) \
-                  .AndReturn([[], False])
+                  .AndReturn([[], False, False])
         cinder.volume_list(IsA(
             http.HttpRequest)).AndReturn(self.cinder_volumes.list())
         quotas.tenant_limit_usages(IsA(http.HttpRequest)) \
@@ -513,7 +512,7 @@ class VolumeViewTests(test.TestCase):
         url = reverse('horizon:project:volumes:volumes:create')
         res = self.client.post(url, formData)
 
-        redirect_url = reverse('horizon:project:volumes:index')
+        redirect_url = VOLUME_VOLUMES_TAB_URL
         self.assertRedirectsNoFollow(res, redirect_url)
 
     @test.create_stubs({cinder: ('volume_type_list',
@@ -571,13 +570,11 @@ class VolumeViewTests(test.TestCase):
                         api.glance: ('image_get',
                                      'image_list_detailed'),
                         quotas: ('tenant_limit_usages',)})
-    def test_create_volume_from_image_under_image_min_disk_size(self):
+    def _test_create_volume_from_image_under_image_min_disk_size(self, image):
         usage_limit = {'maxTotalVolumeGigabytes': 100,
                        'gigabytesUsed': 20,
                        'volumesUsed': len(self.cinder_volumes.list()),
                        'maxTotalVolumes': 6}
-        image = self.images.get(name="protected_images")
-        image.min_disk = 30
         formData = {'name': u'A Volume I Am Making',
                     'description': u'This is a volume I am making for a test.',
                     'method': u'CreateForm',
@@ -607,6 +604,17 @@ class VolumeViewTests(test.TestCase):
                              "The volume size cannot be less than the "
                              "image minimum disk size (30GB)")
 
+    def test_create_volume_from_image_under_image_min_disk_size(self):
+        image = self.images.get(name="protected_images")
+        image.min_disk = 30
+        self._test_create_volume_from_image_under_image_min_disk_size(image)
+
+    def test_create_volume_from_image_under_image_property_min_disk_size(self):
+        image = self.images.get(name="protected_images")
+        image.min_disk = 0
+        image.properties['min_disk'] = 30
+        self._test_create_volume_from_image_under_image_min_disk_size(image)
+
     @test.create_stubs({cinder: ('volume_snapshot_list',
                                  'volume_type_list',
                                  'volume_list',
@@ -633,11 +641,11 @@ class VolumeViewTests(test.TestCase):
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                                        filters={'is_public': True,
                                                 'status': 'active'}) \
-                  .AndReturn([self.images.list(), False])
+                  .AndReturn([self.images.list(), False, False])
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                             filters={'property-owner_id': self.tenant.id,
                                      'status': 'active'}) \
-                  .AndReturn([[], False])
+                  .AndReturn([[], False, False])
         cinder.volume_list(IsA(
             http.HttpRequest)).AndReturn(self.cinder_volumes.list())
         cinder.extension_supported(IsA(http.HttpRequest), 'AvailabilityZones')\
@@ -682,11 +690,11 @@ class VolumeViewTests(test.TestCase):
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                                        filters={'is_public': True,
                                                 'status': 'active'}) \
-                  .AndReturn([self.images.list(), False])
+                  .AndReturn([self.images.list(), False, False])
         api.glance.image_list_detailed(IsA(http.HttpRequest),
                             filters={'property-owner_id': self.tenant.id,
                                      'status': 'active'}) \
-                  .AndReturn([[], False])
+                  .AndReturn([[], False, False])
         cinder.volume_list(IsA(
             http.HttpRequest)).AndReturn(self.cinder_volumes.list())
         cinder.extension_supported(IsA(http.HttpRequest), 'AvailabilityZones')\
@@ -705,44 +713,43 @@ class VolumeViewTests(test.TestCase):
                           ' volumes.']
         self.assertEqual(res.context['form'].errors['__all__'], expected_error)
 
-    @test.create_stubs({cinder: ('volume_list',
-                                 'volume_snapshot_list',
+    @test.create_stubs({cinder: ('tenant_absolute_limits',
+                                 'volume_list',
+                                 'volume_backup_supported',
                                  'volume_delete',),
-                        api.nova: ('server_list',),
-                        quotas: ('tenant_quota_usages',)})
+                        api.nova: ('server_list',)})
     def test_delete_volume(self):
         volumes = self.cinder_volumes.list()
         volume = self.cinder_volumes.first()
         formData = {'action':
                     'volumes__delete__%s' % volume.id}
 
+        cinder.volume_backup_supported(IsA(http.HttpRequest)). \
+            MultipleTimes().AndReturn(True)
         cinder.volume_list(IsA(http.HttpRequest), search_opts=None).\
             AndReturn(volumes)
         cinder.volume_delete(IsA(http.HttpRequest), volume.id)
         api.nova.server_list(IsA(http.HttpRequest), search_opts=None).\
             AndReturn([self.servers.list(), False])
-        cinder.volume_snapshot_list(IsA(http.HttpRequest)).\
-            AndReturn(self.cinder_volume_snapshots.list())
         cinder.volume_list(IsA(http.HttpRequest), search_opts=None).\
             AndReturn(volumes)
         api.nova.server_list(IsA(http.HttpRequest), search_opts=None).\
             AndReturn([self.servers.list(), False])
-        cinder.volume_list(IsA(http.HttpRequest)).AndReturn(volumes)
-        quotas.tenant_quota_usages(IsA(http.HttpRequest)).MultipleTimes().\
-            AndReturn(self.quota_usages.first())
+        cinder.tenant_absolute_limits(IsA(http.HttpRequest)).MultipleTimes().\
+            AndReturn(self.cinder_limits['absolute'])
 
         self.mox.ReplayAll()
 
-        url = reverse('horizon:project:volumes:index')
+        url = VOLUME_INDEX_URL
         res = self.client.post(url, formData, follow=True)
         self.assertIn("Scheduled deletion of Volume: Volume name",
                       [m.message for m in res.context['messages']])
 
-    @test.create_stubs({cinder: ('volume_list',
-                                 'volume_snapshot_list',
+    @test.create_stubs({cinder: ('tenant_absolute_limits',
+                                 'volume_list',
+                                 'volume_backup_supported',
                                  'volume_delete',),
-                        api.nova: ('server_list',),
-                        quotas: ('tenant_quota_usages',)})
+                        api.nova: ('server_list',)})
     def test_delete_volume_error_existing_snapshot(self):
         volume = self.cinder_volumes.first()
         volumes = self.cinder_volumes.list()
@@ -751,6 +758,8 @@ class VolumeViewTests(test.TestCase):
         exc = self.exceptions.cinder.__class__(400,
                                                "error: dependent snapshots")
 
+        cinder.volume_backup_supported(IsA(http.HttpRequest)). \
+            MultipleTimes().AndReturn(True)
         cinder.volume_list(IsA(http.HttpRequest), search_opts=None).\
                            AndReturn(volumes)
         cinder.volume_delete(IsA(http.HttpRequest), volume.id).\
@@ -761,15 +770,11 @@ class VolumeViewTests(test.TestCase):
                            AndReturn(volumes)
         api.nova.server_list(IsA(http.HttpRequest), search_opts=None).\
                              AndReturn([self.servers.list(), False])
-        cinder.volume_snapshot_list(IsA(http.HttpRequest))\
-              .AndReturn(self.cinder_volume_snapshots.list())
-        cinder.volume_list(IsA(http.HttpRequest)).AndReturn(volumes)
-        quotas.tenant_quota_usages(IsA(http.HttpRequest)).MultipleTimes().\
-                                   AndReturn(self.quota_usages.first())
-
+        cinder.tenant_absolute_limits(IsA(http.HttpRequest)).MultipleTimes().\
+                                   AndReturn(self.cinder_limits['absolute'])
         self.mox.ReplayAll()
 
-        url = reverse('horizon:project:volumes:index')
+        url = VOLUME_INDEX_URL
         res = self.client.post(url, formData, follow=True)
         self.assertEqual(list(res.context['messages'])[0].message,
                          u'Unable to delete volume "%s". '
@@ -777,13 +782,18 @@ class VolumeViewTests(test.TestCase):
                          volume.name)
 
     @test.create_stubs({cinder: ('volume_get',), api.nova: ('server_list',)})
+    @override_settings(OPENSTACK_HYPERVISOR_FEATURES={'can_set_mount_point':
+                                                      True})
     def test_edit_attachments(self):
-        PREV = settings.OPENSTACK_HYPERVISOR_FEATURES['can_set_mount_point']
-        settings.OPENSTACK_HYPERVISOR_FEATURES['can_set_mount_point'] = True
-
         volume = self.cinder_volumes.first()
         servers = [s for s in self.servers.list()
                    if s.tenant_id == self.request.user.tenant_id]
+        volume.attachments = [{'id': volume.id,
+                               'volume_id': volume.id,
+                               'volume_name': volume.name,
+                               'instance': servers[0],
+                               'device': '/dev/vdb',
+                               'server_id': servers[0].id}]
 
         cinder.volume_get(IsA(http.HttpRequest), volume.id).AndReturn(volume)
         api.nova.server_list(IsA(http.HttpRequest)).AndReturn([servers, False])
@@ -792,15 +802,43 @@ class VolumeViewTests(test.TestCase):
         url = reverse('horizon:project:volumes:volumes:attach',
                       args=[volume.id])
         res = self.client.get(url)
+        msg = 'Volume %s on instance %s' % (volume.name, servers[0].name)
+        self.assertContains(res, msg)
         # Asserting length of 2 accounts for the one instance option,
         # and the one 'Choose Instance' option.
         form = res.context['form']
         self.assertEqual(len(form.fields['instance']._choices),
-                         2)
+                         1)
         self.assertEqual(res.status_code, 200)
         self.assertTrue(isinstance(form.fields['device'].widget,
                                    widgets.TextInput))
-        settings.OPENSTACK_HYPERVISOR_FEATURES['can_set_mount_point'] = PREV
+        self.assertFalse(form.fields['device'].required)
+
+    @test.create_stubs({cinder: ('volume_get',), api.nova: ('server_list',)})
+    @override_settings(OPENSTACK_HYPERVISOR_FEATURES={'can_set_mount_point':
+                                                      True})
+    def test_edit_attachments_auto_device_name(self):
+        volume = self.cinder_volumes.first()
+        servers = [s for s in self.servers.list()
+                   if s.tenant_id == self.request.user.tenant_id]
+        volume.attachments = [{'id': volume.id,
+                               'volume_id': volume.id,
+                               'volume_name': volume.name,
+                               'instance': servers[0],
+                               'device': '',
+                               'server_id': servers[0].id}]
+
+        cinder.volume_get(IsA(http.HttpRequest), volume.id).AndReturn(volume)
+        api.nova.server_list(IsA(http.HttpRequest)).AndReturn([servers, False])
+        self.mox.ReplayAll()
+
+        url = reverse('horizon:project:volumes:volumes:attach',
+                      args=[volume.id])
+        res = self.client.get(url)
+        form = res.context['form']
+        self.assertTrue(isinstance(form.fields['device'].widget,
+                                   widgets.TextInput))
+        self.assertFalse(form.fields['device'].required)
 
     @test.create_stubs({cinder: ('volume_get',), api.nova: ('server_list',)})
     def test_edit_attachments_cannot_set_mount_point(self):
@@ -822,8 +860,7 @@ class VolumeViewTests(test.TestCase):
                                    widgets.HiddenInput))
 
     @test.create_stubs({cinder: ('volume_get',),
-                        api.nova: ('server_get', 'server_list',),
-                        quotas: ('tenant_quota_usages',)})
+                        api.nova: ('server_list',)})
     def test_edit_attachments_attached_volume(self):
         servers = [s for s in self.servers.list()
                    if s.tenant_id == self.request.user.tenant_id]
@@ -849,28 +886,56 @@ class VolumeViewTests(test.TestCase):
                          server.id)
         self.assertEqual(res.status_code, 200)
 
-    @test.create_stubs({cinder: ('volume_list',
-                                 'volume_snapshot_list'),
-                        api.nova: ('server_list',),
-                        quotas: ('tenant_quota_usages',)})
+    @test.create_stubs({cinder: ('tenant_absolute_limits',
+                                 'volume_get',)})
+    def test_create_snapshot_button_disabled_when_quota_exceeded(self):
+        limits = {'maxTotalSnapshots': 1}
+        limits['totalSnapshotsUsed'] = limits['maxTotalSnapshots']
+        volume = self.cinder_volumes.first()
+
+        cinder.volume_get(IsA(http.HttpRequest), volume.id).AndReturn(volume)
+        cinder.tenant_absolute_limits(IsA(http.HttpRequest)).AndReturn(limits)
+        self.mox.ReplayAll()
+
+        create_link = tables.CreateSnapshot()
+        url = reverse(create_link.get_link_url(), args=[volume.id])
+        res_url = VOLUME_INDEX_URL + \
+                "?action=row_update&table=volumes&obj_id=" + volume.id
+
+        res = self.client.get(res_url, {},
+                               HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        classes = list(create_link.get_default_classes())\
+                    + list(create_link.classes)
+        link_name = "%s (%s)" % (unicode(create_link.verbose_name),
+                                 "Quota exceeded")
+        expected_string = "<a href='%s' class=\"%s disabled\" "\
+            "id=\"volumes__row_%s__action_snapshots\">%s</a>" \
+            % (url, " ".join(classes), volume.id, link_name)
+
+        self.assertContains(res, expected_string, html=True,
+                msg_prefix="The create snapshot button is not disabled")
+
+    @test.create_stubs({cinder: ('tenant_absolute_limits',
+                                 'volume_list',
+                                 'volume_backup_supported',),
+                        api.nova: ('server_list',)})
     def test_create_button_disabled_when_quota_exceeded(self):
-        quota_usages = self.quota_usages.first()
-        quota_usages['volumes']['available'] = 0
+        limits = self.cinder_limits['absolute']
+        limits['totalVolumesUsed'] = limits['maxTotalVolumes']
         volumes = self.cinder_volumes.list()
 
+        api.cinder.volume_backup_supported(IsA(http.HttpRequest)). \
+            MultipleTimes().AndReturn(True)
         cinder.volume_list(IsA(http.HttpRequest), search_opts=None)\
               .AndReturn(volumes)
         api.nova.server_list(IsA(http.HttpRequest), search_opts=None)\
               .AndReturn([self.servers.list(), False])
-        cinder.volume_snapshot_list(IsA(http.HttpRequest))\
-              .AndReturn(self.cinder_volume_snapshots.list())
-        cinder.volume_list(IsA(http.HttpRequest)).AndReturn(volumes)
-        quotas.tenant_quota_usages(IsA(http.HttpRequest))\
-              .MultipleTimes().AndReturn(quota_usages)
-
+        cinder.tenant_absolute_limits(IsA(http.HttpRequest))\
+              .MultipleTimes().AndReturn(limits)
         self.mox.ReplayAll()
 
-        res = self.client.get(reverse('horizon:project:volumes:index'))
+        res = self.client.get(VOLUME_INDEX_URL)
         self.assertTemplateUsed(res, 'project/volumes/index.html')
 
         volumes = res.context['volumes_table'].data
@@ -883,8 +948,10 @@ class VolumeViewTests(test.TestCase):
         link_name = "%s (%s)" % (unicode(create_link.verbose_name),
                                  "Quota exceeded")
         expected_string = "<a href='%s' title='%s'  class='%s disabled' "\
-                          "id='volumes__action_create'>%s</a>" \
-                            % (url, link_name, " ".join(classes), link_name)
+            "id='volumes__action_create'  data-update-url=" \
+            "'/project/volumes/?action=create&amp;table=volumes'> "\
+            "<span class='glyphicon glyphicon-plus'></span>%s</a>" \
+            % (url, link_name, " ".join(classes), link_name)
         self.assertContains(res, expected_string, html=True,
                             msg_prefix="The create button is not disabled")
 
@@ -919,16 +986,20 @@ class VolumeViewTests(test.TestCase):
 
         self.assertNoMessages()
 
-    @test.create_stubs({cinder: ('volume_get',)})
+    @test.create_stubs({cinder: ('tenant_absolute_limits',
+                                 'volume_get',)})
     def test_get_data(self):
         volume = self.cinder_volumes.get(name='v2_volume')
         volume._apiresource.name = ""
 
         cinder.volume_get(IsA(http.HttpRequest), volume.id).AndReturn(volume)
 
+        cinder.tenant_absolute_limits(IsA(http.HttpRequest))\
+            .MultipleTimes().AndReturn(self.cinder_limits['absolute'])
+
         self.mox.ReplayAll()
 
-        url = reverse('horizon:project:volumes:index') + \
+        url = VOLUME_INDEX_URL + \
                 "?action=row_update&table=volumes&obj_id=" + volume.id
 
         res = self.client.get(url, {},
@@ -977,17 +1048,64 @@ class VolumeViewTests(test.TestCase):
         res = self.client.post(url, formData)
         self.assertRedirectsNoFollow(res, VOLUME_INDEX_URL)
 
+    @test.create_stubs({cinder: ('volume_upload_to_image',
+                                 'volume_get')})
+    def test_upload_to_image(self):
+        volume = self.cinder_volumes.get(name='v2_volume')
+        loaded_resp = {'container_format': 'bare',
+                       'disk_format': 'raw',
+                       'id': '741fe2ac-aa2f-4cec-82a9-4994896b43fb',
+                       'image_id': '2faa080b-dd56-4bf0-8f0a-0d4627d8f306',
+                       'image_name': 'test',
+                       'size': '2',
+                       'status': 'uploading'}
+
+        form_data = {'id': volume.id,
+                     'name': volume.name,
+                     'image_name': 'testimage',
+                     'force': True,
+                     'container_format': 'bare',
+                     'disk_format': 'raw'}
+
+        cinder.volume_get(IsA(http.HttpRequest), volume.id).AndReturn(volume)
+
+        cinder.volume_upload_to_image(
+            IsA(http.HttpRequest),
+            form_data['id'],
+            form_data['force'],
+            form_data['image_name'],
+            form_data['container_format'],
+            form_data['disk_format']).AndReturn(loaded_resp)
+
+        self.mox.ReplayAll()
+
+        url = reverse('horizon:project:volumes:volumes:upload_to_image',
+                      args=[volume.id])
+        res = self.client.post(url, form_data)
+
+        self.assertNoFormErrors(res)
+        self.assertMessageCount(info=1)
+
+        redirect_url = VOLUME_INDEX_URL
+        self.assertRedirectsNoFollow(res, redirect_url)
+
     @test.create_stubs({cinder: ('volume_get',
-                                 'volume_extend')})
+                                 'volume_extend'),
+                        quotas: ('tenant_limit_usages',)})
     def test_extend_volume(self):
         volume = self.cinder_volumes.first()
+        usage_limit = {'maxTotalVolumeGigabytes': 100,
+                       'gigabytesUsed': 20,
+                       'volumesUsed': len(self.volumes.list()),
+                       'maxTotalVolumes': 6}
         formData = {'name': u'A Volume I Am Making',
                     'orig_size': volume.size,
-                    'new_size': 100}
+                    'new_size': 120}
 
         cinder.volume_get(IsA(http.HttpRequest), volume.id).\
-                          AndReturn(self.cinder_volumes.first())
-
+            AndReturn(self.cinder_volumes.first())
+        quotas.tenant_limit_usages(IsA(http.HttpRequest)).\
+            AndReturn(usage_limit)
         cinder.volume_extend(IsA(http.HttpRequest),
                              volume.id,
                              formData['new_size']).AndReturn(volume)
@@ -998,7 +1116,7 @@ class VolumeViewTests(test.TestCase):
                       args=[volume.id])
         res = self.client.post(url, formData)
 
-        redirect_url = reverse('horizon:project:volumes:index')
+        redirect_url = VOLUME_INDEX_URL
         self.assertRedirectsNoFollow(res, redirect_url)
 
     @test.create_stubs({cinder: ('volume_get',),
@@ -1024,5 +1142,186 @@ class VolumeViewTests(test.TestCase):
                       args=[volume.id])
         res = self.client.post(url, formData)
         self.assertFormError(res, 'form', None,
-                             "New size for extend must be greater than "
+                             "New size must be greater than "
                              "current size.")
+
+    @test.create_stubs({cinder: ('volume_get',
+                                 'retype_supported',
+                                 'tenant_absolute_limits'),
+                        api.nova: ('server_get',)})
+    def test_retype_volume_not_supported_no_action_item(self):
+        volume = self.cinder_volumes.get(name='my_volume')
+        limits = self.cinder_limits['absolute']
+        server = self.servers.first()
+
+        cinder.volume_get(IsA(http.HttpRequest), volume.id).AndReturn(volume)
+        cinder.retype_supported().AndReturn(False)
+        cinder.tenant_absolute_limits(IsA(http.HttpRequest))\
+            .MultipleTimes('limits').AndReturn(limits)
+        api.nova.server_get(IsA(http.HttpRequest), server.id).AndReturn(server)
+
+        self.mox.ReplayAll()
+
+        url = VOLUME_INDEX_URL + \
+              "?action=row_update&table=volumes&obj_id=" + volume.id
+
+        res = self.client.get(url, {}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(res.status_code, 200)
+
+        self.assertNotContains(res, 'Change Volume Type')
+        self.assertNotContains(res, 'retype')
+
+    @test.create_stubs({cinder: ('volume_get',
+                                 'retype_supported',
+                                 'tenant_absolute_limits')})
+    def test_retype_volume_supported_action_item(self):
+        volume = self.cinder_volumes.get(name='v2_volume')
+        limits = self.cinder_limits['absolute']
+
+        cinder.volume_get(IsA(http.HttpRequest), volume.id).AndReturn(volume)
+        cinder.retype_supported().AndReturn(True)
+        cinder.tenant_absolute_limits(IsA(http.HttpRequest))\
+            .MultipleTimes('limits').AndReturn(limits)
+
+        self.mox.ReplayAll()
+
+        url = VOLUME_INDEX_URL + \
+              "?action=row_update&table=volumes&obj_id=" + volume.id
+
+        res = self.client.get(url, {}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(res.status_code, 200)
+
+        self.assertContains(res, 'Change Volume Type')
+        self.assertContains(res, 'retype')
+
+    @test.create_stubs({cinder: ('volume_get',
+                                 'volume_retype',
+                                 'volume_type_list')})
+    def test_retype_volume(self):
+        volume = self.cinder_volumes.get(name='my_volume2')
+
+        volume_type = self.cinder_volume_types.get(name='vol_type_1')
+
+        form_data = {'id': volume.id,
+                     'name': volume.name,
+                     'volume_type': volume_type.name,
+                     'migration_policy': 'on-demand'}
+
+        cinder.volume_get(IsA(http.HttpRequest), volume.id).AndReturn(volume)
+
+        cinder.volume_type_list(
+            IsA(http.HttpRequest)).AndReturn(self.cinder_volume_types.list())
+
+        cinder.volume_retype(
+            IsA(http.HttpRequest),
+            volume.id,
+            form_data['volume_type'],
+            form_data['migration_policy']).AndReturn(True)
+
+        self.mox.ReplayAll()
+
+        url = reverse('horizon:project:volumes:volumes:retype',
+                      args=[volume.id])
+        res = self.client.post(url, form_data)
+
+        self.assertNoFormErrors(res)
+
+        redirect_url = VOLUME_INDEX_URL
+        self.assertRedirectsNoFollow(res, redirect_url)
+
+    @test.create_stubs({cinder: ('volume_get',
+                                 'volume_type_list')})
+    def test_retype_volume_same_type(self):
+        volume = self.cinder_volumes.get(name='my_volume2')
+
+        volume_type = self.cinder_volume_types.get(name='vol_type_2')
+
+        form_data = {'id': volume.id,
+                     'name': volume.name,
+                     'volume_type': volume_type.name,
+                     'migration_policy': 'on-demand'}
+
+        cinder.volume_get(IsA(http.HttpRequest), volume.id).AndReturn(volume)
+
+        cinder.volume_type_list(
+            IsA(http.HttpRequest)).AndReturn(self.cinder_volume_types.list())
+
+        self.mox.ReplayAll()
+
+        url = reverse('horizon:project:volumes:volumes:retype',
+                      args=[volume.id])
+        res = self.client.post(url, form_data)
+
+        self.assertFormError(res,
+                             'form',
+                             'volume_type',
+                             'New volume type must be different from the '
+                             'original volume type "%s".' % volume_type.name)
+
+    def test_encryption_false(self):
+        self._test_encryption(False)
+
+    def test_encryption_true(self):
+        self._test_encryption(True)
+
+    @test.create_stubs({cinder: ('volume_list',
+                                 'volume_backup_supported',
+                                 'tenant_absolute_limits'),
+                        api.nova: ('server_list',)})
+    def _test_encryption(self, encryption):
+        volumes = self.volumes.list()
+        for volume in volumes:
+            volume.encrypted = encryption
+        limits = self.cinder_limits['absolute']
+
+        cinder.volume_backup_supported(IsA(http.HttpRequest))\
+            .MultipleTimes('backup_supported').AndReturn(False)
+        cinder.volume_list(IsA(http.HttpRequest), search_opts=None)\
+            .AndReturn(self.volumes.list())
+        api.nova.server_list(IsA(http.HttpRequest), search_opts=None)\
+            .AndReturn([self.servers.list(), False])
+        cinder.tenant_absolute_limits(IsA(http.HttpRequest))\
+            .MultipleTimes('limits').AndReturn(limits)
+
+        self.mox.ReplayAll()
+
+        res = self.client.get(VOLUME_INDEX_URL)
+        rows = res.context['volumes_table'].get_rows()
+
+        if encryption:
+            column_value = 'Yes'
+        else:
+            column_value = 'No'
+
+        for row in rows:
+            self.assertEqual(row.cells['encryption'].data, column_value)
+
+    @test.create_stubs({cinder: ('volume_get',),
+                        quotas: ('tenant_limit_usages',)})
+    def test_extend_volume_with_size_out_of_quota(self):
+        volume = self.volumes.first()
+        usage_limit = {'maxTotalVolumeGigabytes': 100,
+                       'gigabytesUsed': 20,
+                       'volumesUsed': len(self.volumes.list()),
+                       'maxTotalVolumes': 6}
+        formData = {'name': u'A Volume I Am Making',
+                    'orig_size': volume.size,
+                    'new_size': 1000}
+
+        quotas.tenant_limit_usages(IsA(http.HttpRequest)).\
+            AndReturn(usage_limit)
+        cinder.volume_get(IsA(http.HttpRequest), volume.id).\
+            AndReturn(self.volumes.first())
+        quotas.tenant_limit_usages(IsA(http.HttpRequest)).\
+            AndReturn(usage_limit)
+
+        self.mox.ReplayAll()
+
+        url = reverse('horizon:project:volumes:volumes:extend',
+                      args=[volume.id])
+        res = self.client.post(url, formData)
+        self.assertFormError(res, "form", "new_size",
+                             "Volume cannot be extended to 1000GB as you only "
+                             "have 80GB of your quota available.")

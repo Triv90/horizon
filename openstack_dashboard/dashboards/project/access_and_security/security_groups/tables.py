@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,18 +15,47 @@
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
 
 from horizon import tables
 
 from openstack_dashboard import api
+from openstack_dashboard import policy
 from openstack_dashboard.utils import filters
 
 
-class DeleteGroup(tables.DeleteAction):
-    data_type_singular = _("Security Group")
-    data_type_plural = _("Security Groups")
+POLICY_CHECK = getattr(settings, "POLICY_CHECK_FUNCTION",
+                       lambda policy, request, target: True)
+
+
+class DeleteGroup(policy.PolicyTargetMixin, tables.DeleteAction):
+
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Security Group",
+            u"Delete Security Groups",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Deleted Security Group",
+            u"Deleted Security Groups",
+            count
+        )
 
     def allowed(self, request, security_group=None):
+        policy_target = self.get_policy_target(request, security_group)
+        if api.base.is_service_enabled(request, "network"):
+            policy = (("network", "delete_security_group"),)
+        else:
+            policy = (("compute", "compute_extension:security_groups"),)
+
+        if not POLICY_CHECK(policy, request, policy_target):
+            return False
+
         if not security_group:
             return True
         return security_group.name != 'default'
@@ -41,26 +68,54 @@ class CreateGroup(tables.LinkAction):
     name = "create"
     verbose_name = _("Create Security Group")
     url = "horizon:project:access_and_security:security_groups:create"
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
+
+    def allowed(self, request, security_group=None):
+        if api.base.is_service_enabled(request, "network"):
+            policy = (("network", "create_security_group"),)
+        else:
+            policy = (("compute", "compute_extension:security_groups"),)
+
+        return POLICY_CHECK(policy, request, target={})
 
 
-class EditGroup(tables.LinkAction):
+class EditGroup(policy.PolicyTargetMixin, tables.LinkAction):
     name = "edit"
     verbose_name = _("Edit Security Group")
     url = "horizon:project:access_and_security:security_groups:update"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
 
     def allowed(self, request, security_group=None):
+        policy_target = self.get_policy_target(request, security_group)
+        if api.base.is_service_enabled(request, "network"):
+            policy = (("network", "update_security_group"),)
+        else:
+            policy = (("compute", "compute_extension:security_groups"),)
+
+        if not POLICY_CHECK(policy, request, policy_target):
+            return False
+
         if not security_group:
             return True
         return security_group.name != 'default'
 
 
-class ManageRules(tables.LinkAction):
+class ManageRules(policy.PolicyTargetMixin, tables.LinkAction):
     name = "manage_rules"
     verbose_name = _("Manage Rules")
     url = "horizon:project:access_and_security:security_groups:detail"
-    classes = ("btn-edit")
+    icon = "pencil"
+
+    def allowed(self, request, security_group=None):
+        policy_target = self.get_policy_target(request, security_group)
+        if api.base.is_service_enabled(request, "network"):
+            policy = (("network", "get_security_group"),)
+        else:
+            policy = (("compute", "compute_extension:security_groups"),)
+
+        return POLICY_CHECK(policy, request, policy_target)
 
 
 class SecurityGroupsTable(tables.DataTable):
@@ -81,15 +136,45 @@ class CreateRule(tables.LinkAction):
     name = "add_rule"
     verbose_name = _("Add Rule")
     url = "horizon:project:access_and_security:security_groups:add_rule"
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
+
+    def allowed(self, request, security_group_rule=None):
+        if api.base.is_service_enabled(request, "network"):
+            policy = (("network", "create_security_group_rule"),)
+        else:
+            policy = (("compute", "compute_extension:security_groups"),)
+
+        return POLICY_CHECK(policy, request, target={})
 
     def get_link_url(self):
         return reverse(self.url, args=[self.table.kwargs['security_group_id']])
 
 
 class DeleteRule(tables.DeleteAction):
-    data_type_singular = _("Rule")
-    data_type_plural = _("Rules")
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Rule",
+            u"Delete Rules",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Deleted Rule",
+            u"Deleted Rules",
+            count
+        )
+
+    def allowed(self, request, security_group_rule=None):
+        if api.base.is_service_enabled(request, "network"):
+            policy = (("network", "delete_security_group_rule"),)
+        else:
+            policy = (("compute", "compute_extension:security_groups"),)
+
+        return POLICY_CHECK(policy, request, target={})
 
     def delete(self, request, obj_id):
         api.network.security_group_rule_delete(request, obj_id)

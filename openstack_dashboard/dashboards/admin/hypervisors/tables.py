@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 B1 Systems GmbH
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -23,35 +21,36 @@ from horizon.templatetags import sizeformat
 class AdminHypervisorsTable(tables.DataTable):
     hostname = tables.Column("hypervisor_hostname",
                              link=("horizon:admin:hypervisors:detail"),
+                             attrs={'data-type': 'naturalSort'},
                              verbose_name=_("Hostname"))
 
     hypervisor_type = tables.Column("hypervisor_type",
                                     verbose_name=_("Type"))
 
-    vcpus = tables.Column("vcpus",
-                          verbose_name=_("VCPUs (total)"))
-
     vcpus_used = tables.Column("vcpus_used",
                                verbose_name=_("VCPUs (used)"))
 
-    memory = tables.Column('memory_mb',
-                           verbose_name=_("RAM (total)"),
-                           attrs={'data-type': 'size'},
-                           filters=(sizeformat.mbformat,))
+    vcpus = tables.Column("vcpus",
+                          verbose_name=_("VCPUs (total)"))
 
     memory_used = tables.Column('memory_mb_used',
                                 verbose_name=_("RAM (used)"),
                                 attrs={'data-type': 'size'},
-                                filters=(sizeformat.mbformat,))
+                                filters=(sizeformat.mb_float_format,))
 
-    local = tables.Column('local_gb',
-                          verbose_name=_("Storage (total)"),
-                          attrs={'data-type': 'size'},
-                          filters=(sizeformat.diskgbformat,))
+    memory = tables.Column('memory_mb',
+                           verbose_name=_("RAM (total)"),
+                           attrs={'data-type': 'size'},
+                           filters=(sizeformat.mb_float_format,))
 
     local_used = tables.Column('local_gb_used',
                                verbose_name=_("Storage (used)"),
                                attrs={'data-type': 'size'},
+                               filters=(sizeformat.diskgbformat,))
+
+    local = tables.Column('local_gb',
+                          verbose_name=_("Storage (total)"),
+                          attrs={'data-type': 'size'},
                           filters=(sizeformat.diskgbformat,))
 
     running_vms = tables.Column("running_vms",
@@ -67,6 +66,7 @@ class AdminHypervisorsTable(tables.DataTable):
 
 class AdminHypervisorInstancesTable(tables.DataTable):
     name = tables.Column("name",
+                         link=("horizon:admin:instances:detail"),
                          verbose_name=_("Instance Name"))
 
     instance_id = tables.Column("uuid",

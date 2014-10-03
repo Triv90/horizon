@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Rackspace Hosting
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,7 +13,7 @@
 #    under the License.
 
 from django.core.urlresolvers import reverse
-from django.template.defaultfilters import title  # noqa
+from django.template import defaultfilters as d_filters
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import tables
@@ -38,14 +36,16 @@ class LaunchLink(tables.LinkAction):
     name = "create"
     verbose_name = _("Create Backup")
     url = "horizon:project:database_backups:create"
-    classes = ("btn-launch", "ajax-modal")
+    classes = ("ajax-modal", "btn-create")
+    icon = "camera"
 
 
 class RestoreLink(tables.LinkAction):
     name = "restore"
     verbose_name = _("Restore Backup")
     url = "horizon:project:databases:launch"
-    classes = ("btn-launch", "ajax-modal")
+    classes = ("ajax-modal",)
+    icon = "cloud-upload"
 
     def allowed(self, request, backup=None):
         return backup.status == 'COMPLETED'
@@ -59,7 +59,7 @@ class DownloadBackup(tables.LinkAction):
     name = "download"
     verbose_name = _("Download Backup")
     url = 'horizon:project:containers:object_download'
-    classes = ("btn-launch",)
+    classes = ("btn-download",)
 
     def get_link_url(self, datum):
         ref = datum.locationRef.split('/')
@@ -73,15 +73,11 @@ class DownloadBackup(tables.LinkAction):
         return datum.status == 'COMPLETED'
 
 
-class DeleteBackup(tables.BatchAction):
-    name = "delete"
-    action_present = _("Delete")
-    action_past = _("Scheduled deletion of %(data_type)s")
+class DeleteBackup(tables.DeleteAction):
     data_type_singular = _("Backup")
     data_type_plural = _("Backups")
-    classes = ('btn-danger', 'btn-terminate')
 
-    def action(self, request, obj_id):
+    def delete(self, request, obj_id):
         api.trove.backup_delete(request, obj_id)
 
 
@@ -108,21 +104,46 @@ def db_link(obj):
 
 
 def db_name(obj):
-    if hasattr(obj.instance, 'name'):
-        return obj.instance.name
-    return obj.instance_id
+    if not hasattr(obj, 'instance') or not hasattr(obj.instance, 'name'):
+        return obj.instance_id
+    return obj.instance.name
+
+
+def get_datastore(obj):
+    if hasattr(obj, "datastore"):
+        return obj.datastore["type"]
+    return _("Not available")
+
+
+def get_datastore_version(obj):
+    if hasattr(obj, "datastore"):
+        return obj.datastore["version"]
+    return _("Not available")
+
+
+def is_incremental(obj):
+    return hasattr(obj, 'parent_id') and obj.parent_id is not None
 
 
 class BackupsTable(tables.DataTable):
     name = tables.Column("name",
-                         link=("horizon:project:database_backups:detail"),
+                         link="horizon:project:database_backups:detail",
                          verbose_name=_("Name"))
-    created = tables.Column("created", verbose_name=_("Created At"),
+    datastore = tables.Column(get_datastore,
+                              verbose_name=_("Datastore"))
+    datastore_version = tables.Column(get_datastore_version,
+                                      verbose_name=_("Datastore Version"))
+    created = tables.Column("created", verbose_name=_("Created"),
                             filters=[filters.parse_isotime])
     instance = tables.Column(db_name, link=db_link,
                              verbose_name=_("Database"))
+    incremental = tables.Column(is_incremental,
+                                verbose_name=_("Incremental"),
+                                filters=(d_filters.yesno,
+                                         d_filters.capfirst))
     status = tables.Column("status",
-                           filters=(title, filters.replace_underscores),
+                           filters=(d_filters.title,
+                                    filters.replace_underscores),
                            verbose_name=_("Status"),
                            status=True,
                            status_choices=STATUS_CHOICES)

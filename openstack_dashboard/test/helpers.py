@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -18,38 +16,40 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
+import copy
 from functools import wraps  # noqa
 import os
 
+from ceilometerclient.v2 import client as ceilometer_client
+from cinderclient import client as cinder_client
 from django.conf import settings
 from django.contrib.auth.middleware import AuthenticationMiddleware  # noqa
 from django.contrib.messages.storage import default_storage  # noqa
 from django.core.handlers import wsgi
+from django.core import urlresolvers
 from django import http
 from django.test.client import RequestFactory  # noqa
+from django.test import utils as django_test_utils
 from django.utils.importlib import import_module  # noqa
 from django.utils import unittest
-
-from ceilometerclient.v2 import client as ceilometer_client
-from cinderclient import client as cinder_client
 import glanceclient
 from heatclient import client as heat_client
+import httplib2
 from keystoneclient.v2_0 import client as keystone_client
+import mox
 from neutronclient.v2_0 import client as neutron_client
 from novaclient.v1_1 import client as nova_client
+from openstack_auth import user
+from openstack_auth import utils
+from saharaclient import client as sahara_client
 from swiftclient import client as swift_client
 from troveclient import client as trove_client
 
-
-import httplib2
-import mox
-
-from openstack_auth import user
-from openstack_auth import utils
-
+from horizon import base
+from horizon import conf
 from horizon import middleware
 from horizon.test import helpers as horizon_helpers
-
 from openstack_dashboard import api
 from openstack_dashboard import context_processors
 from openstack_dashboard.test.test_data import utils as test_utils
@@ -101,8 +101,9 @@ class RequestFactoryWithMessages(RequestFactory):
 @unittest.skipIf(os.environ.get('SKIP_UNITTESTS', False),
                      "The SKIP_UNITTESTS env variable is set.")
 class TestCase(horizon_helpers.TestCase):
-    """Specialized base test case class for Horizon which gives access to
-    numerous additional features:
+    """Specialized base test case class for Horizon.
+
+    It gives access to numerous additional features:
 
       * A full suite of test data through various attached objects and
         managers (e.g. ``self.servers``, ``self.user``, etc.). See the
@@ -139,6 +140,7 @@ class TestCase(horizon_helpers.TestCase):
         self.setActiveUser(id=self.user.id,
                            token=self.token,
                            username=self.user.name,
+                           domain_id=self.domain.id,
                            tenant_id=self.tenant.id,
                            service_catalog=self.service_catalog,
                            authorized_tenants=tenants)
@@ -159,11 +161,12 @@ class TestCase(horizon_helpers.TestCase):
 
     def setActiveUser(self, id=None, token=None, username=None, tenant_id=None,
                         service_catalog=None, tenant_name=None, roles=None,
-                        authorized_tenants=None, enabled=True):
+                        authorized_tenants=None, enabled=True, domain_id=None):
         def get_user(request):
             return user.User(id=id,
                              token=token,
                              user=username,
+                             domain_id=domain_id,
                              tenant_id=tenant_id,
                              service_catalog=service_catalog,
                              roles=roles,
@@ -173,7 +176,9 @@ class TestCase(horizon_helpers.TestCase):
         utils.get_user = get_user
 
     def assertRedirectsNoFollow(self, response, expected_url):
-        """Asserts that the given response issued a 302 redirect without
+        """Check for redirect.
+
+        Asserts that the given response issued a 302 redirect without
         processing the view which is redirected to.
         """
         assert (response.status_code / 100 == 3), \
@@ -183,7 +188,9 @@ class TestCase(horizon_helpers.TestCase):
         self.assertEqual(response.status_code, 302)
 
     def assertNoFormErrors(self, response, context_name="form"):
-        """Asserts that the response either does not contain a form in its
+        """Checks for no form errors.
+
+        Asserts that the response either does not contain a form in its
         context, or that if it does, that form has no errors.
         """
         context = getattr(response, "context", {})
@@ -195,7 +202,9 @@ class TestCase(horizon_helpers.TestCase):
 
     def assertFormErrors(self, response, count=0, message=None,
                          context_name="form"):
-        """Asserts that the response does contain a form in its
+        """Check for form errors.
+
+        Asserts that the response does contain a form in its
         context, and that form has errors, if count were given,
         it must match the exact numbers of errors
         """
@@ -216,8 +225,9 @@ class TestCase(horizon_helpers.TestCase):
 
 
 class BaseAdminViewTests(TestCase):
-    """A ``TestCase`` subclass which sets an active user with the "admin" role
-    for testing admin-only views and functionality.
+    """Sets an active user with the "admin" role.
+
+    For testing admin-only views and functionality.
     """
     def setActiveUser(self, *args, **kwargs):
         if "roles" not in kwargs:
@@ -237,17 +247,19 @@ class BaseAdminViewTests(TestCase):
 
 
 class APITestCase(TestCase):
-    """The ``APITestCase`` class is for use with tests which deal with the
-    underlying clients rather than stubbing out the
-    openstack_dashboard.api.* methods.
+    """Testing APIs.
+
+    For use with tests which deal with the underlying clients rather than
+    stubbing out the openstack_dashboard.api.* methods.
     """
     def setUp(self):
         super(APITestCase, self).setUp()
         utils.patch_middleware_get_user()
 
         def fake_keystoneclient(request, admin=False):
-            """Wrapper function which returns the stub keystoneclient. Only
-            necessary because the function takes too many arguments to
+            """Returns the stub keystoneclient.
+
+            Only necessary because the function takes too many arguments to
             conveniently be a lambda.
             """
             return self.stub_keystoneclient()
@@ -261,6 +273,7 @@ class APITestCase(TestCase):
         self._original_heatclient = api.heat.heatclient
         self._original_ceilometerclient = api.ceilometer.ceilometerclient
         self._original_troveclient = api.trove.troveclient
+        self._original_saharaclient = api.sahara.client
 
         # Replace the clients with our stubs.
         api.glance.glanceclient = lambda request: self.stub_glanceclient()
@@ -272,6 +285,7 @@ class APITestCase(TestCase):
         api.ceilometer.ceilometerclient = lambda request: \
             self.stub_ceilometerclient()
         api.trove.troveclient = lambda request: self.stub_troveclient()
+        api.sahara.client = lambda request: self.stub_saharaclient()
 
     def tearDown(self):
         super(APITestCase, self).tearDown()
@@ -283,6 +297,7 @@ class APITestCase(TestCase):
         api.heat.heatclient = self._original_heatclient
         api.ceilometer.ceilometerclient = self._original_ceilometerclient
         api.trove.troveclient = self._original_troveclient
+        api.sahara.client = self._original_saharaclient
 
     def stub_novaclient(self):
         if not hasattr(self, "novaclient"):
@@ -332,6 +347,7 @@ class APITestCase(TestCase):
                                         preauthtoken=mox.IgnoreArg(),
                                         preauthurl=mox.IgnoreArg(),
                                         cacert=None,
+                                        insecure=False,
                                         auth_version="2.0") \
                             .AndReturn(self.swiftclient)
                 expected_calls -= 1
@@ -355,6 +371,12 @@ class APITestCase(TestCase):
             self.mox.StubOutWithMock(trove_client, 'Client')
             self.troveclient = self.mox.CreateMock(trove_client.Client)
         return self.troveclient
+
+    def stub_saharaclient(self):
+        if not hasattr(self, "saharaclient"):
+            self.mox.StubOutWithMock(sahara_client, 'Client')
+            self.saharaclient = self.mox.CreateMock(sahara_client.Client)
+        return self.saharaclient
 
 
 @unittest.skipUnless(os.environ.get('WITH_SELENIUM', False),
@@ -399,8 +421,10 @@ class SeleniumTestCase(horizon_helpers.SeleniumTestCase):
 
 
 class SeleniumAdminTestCase(SeleniumTestCase):
-    """A ``TestCase`` subclass which sets an active user with the "admin" role
-    for testing admin-only views and functionality.
+    """Version of AdminTestCase for Selenium.
+
+    Sets an active user with the "admin" role for testing admin-only views and
+    functionality.
     """
     def setActiveUser(self, *args, **kwargs):
         if "roles" not in kwargs:
@@ -413,5 +437,86 @@ def my_custom_sort(flavor):
         'm1.secret': 0,
         'm1.tiny': 1,
         'm1.massive': 2,
+        'm1.metadata': 3,
     }
     return sort_order[flavor.name]
+
+
+class PluginTestCase(TestCase):
+    """Test case for testing plugin system of Horizon.
+
+    For use with tests which deal with the pluggable dashboard and panel
+    configuration, it takes care of backing up and restoring the Horizon
+    configuration.
+    """
+    def setUp(self):
+        super(PluginTestCase, self).setUp()
+        self.old_horizon_config = conf.HORIZON_CONFIG
+        conf.HORIZON_CONFIG = conf.LazySettings()
+        base.Horizon._urls()
+        # Trigger discovery, registration, and URLconf generation if it
+        # hasn't happened yet.
+        self.client.get("/")
+        # Store our original dashboards
+        self._discovered_dashboards = base.Horizon._registry.keys()
+        # Gather up and store our original panels for each dashboard
+        self._discovered_panels = {}
+        for dash in self._discovered_dashboards:
+            panels = base.Horizon._registry[dash]._registry.keys()
+            self._discovered_panels[dash] = panels
+
+    def tearDown(self):
+        super(PluginTestCase, self).tearDown()
+        conf.HORIZON_CONFIG = self.old_horizon_config
+        # Destroy our singleton and re-create it.
+        base.HorizonSite._instance = None
+        del base.Horizon
+        base.Horizon = base.HorizonSite()
+        # Reload the convenience references to Horizon stored in __init__
+        reload(import_module("horizon"))
+        # Re-register our original dashboards and panels.
+        # This is necessary because autodiscovery only works on the first
+        # import, and calling reload introduces innumerable additional
+        # problems. Manual re-registration is the only good way for testing.
+        for dash in self._discovered_dashboards:
+            base.Horizon.register(dash)
+            for panel in self._discovered_panels[dash]:
+                dash.register(panel)
+        self._reload_urls()
+
+    def _reload_urls(self):
+        """CLeans up URLs.
+
+        Clears out the URL caches, reloads the root urls module, and
+        re-triggers the autodiscovery mechanism for Horizon. Allows URLs
+        to be re-calculated after registering new dashboards. Useful
+        only for testing and should never be used on a live site.
+        """
+        urlresolvers.clear_url_caches()
+        reload(import_module(settings.ROOT_URLCONF))
+        base.Horizon._urls()
+
+
+class update_settings(django_test_utils.override_settings):
+    """override_settings which allows override an item in dict.
+
+    django original override_settings replaces a dict completely,
+    however OpenStack dashboard setting has many dictionary configuration
+    and there are test case where we want to override only one item in
+    a dictionary and keep other items in the dictionary.
+    This version of override_settings allows this if keep_dict is True.
+
+    If keep_dict False is specified, the original behavior of
+    Django override_settings is used.
+    """
+
+    def __init__(self, keep_dict=True, **kwargs):
+        if keep_dict:
+            for key, new_value in kwargs.items():
+                value = getattr(settings, key, None)
+                if (isinstance(new_value, collections.Mapping) and
+                        isinstance(value, collections.Mapping)):
+                    copied = copy.copy(value)
+                    copied.update(new_value)
+                    kwargs[key] = copied
+        super(update_settings, self).__init__(**kwargs)

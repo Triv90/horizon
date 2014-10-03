@@ -23,7 +23,7 @@ from horizon.utils import filters
 class CSVSummary(tables.LinkAction):
     name = "csv_summary"
     verbose_name = _("Download CSV Summary")
-    classes = ("btn-download",)
+    icon = "download"
 
     def get_link_url(self, usage=None):
         return self.table.kwargs['usage'].csv_link()
@@ -31,7 +31,8 @@ class CSVSummary(tables.LinkAction):
 
 class BaseUsageTable(tables.DataTable):
     vcpus = tables.Column('vcpus', verbose_name=_("VCPUs"))
-    disk = tables.Column('local_gb', verbose_name=_("Disk"))
+    disk = tables.Column('local_gb', verbose_name=_("Disk"),
+                         filters=(sizeformat.diskgbformat,))
     memory = tables.Column('memory_mb',
                            verbose_name=_("RAM"),
                            filters=(sizeformat.mbformat,),
@@ -71,7 +72,7 @@ class ProjectUsageTable(BaseUsageTable):
                              verbose_name=_("Instance Name"),
                              link=get_instance_link)
     uptime = tables.Column('uptime_at',
-                           verbose_name=_("Uptime"),
+                           verbose_name=_("Time since created"),
                            filters=(filters.timesince_sortable,),
                            attrs={'data-type': 'timesince'})
 

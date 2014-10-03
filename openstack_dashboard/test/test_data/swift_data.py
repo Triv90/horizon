@@ -23,6 +23,7 @@ from openstack_dashboard.test.test_data import utils
 def data(TEST):
     TEST.containers = utils.TestDataContainer()
     TEST.objects = utils.TestDataContainer()
+    TEST.folder = utils.TestDataContainer()
 
     # '%' can break URL if not properly url-quoted
     # ' ' (space) can break 'Content-Disposition' if not properly
@@ -68,12 +69,18 @@ def data(TEST):
                      "last_modified": None,
                      "hash": u"object_hash_2"}
     object_dict_3 = {"name": u"test,object_three%\u6346",
-                   "content_type": u"text/plain",
-                   "bytes": 128,
-                   "timestamp": timeutils.isotime(),
-                   "last_modified": None,
-                   "hash": u"object_hash"}
-    obj_dicts = [object_dict, object_dict_2, object_dict_3]
+                     "content_type": u"text/plain",
+                     "bytes": 128,
+                     "timestamp": timeutils.isotime(),
+                     "last_modified": None,
+                     "hash": u"object_hash"}
+    object_dict_4 = {"name": u"test.txt",
+                     "content_type": u"text/plain",
+                     "bytes": 128,
+                     "timestamp": timeutils.isotime(),
+                     "last_modified": None,
+                     "hash": u"object_hash"}
+    obj_dicts = [object_dict, object_dict_2, object_dict_3, object_dict_4]
     obj_data = "Fake Data"
 
     for obj_dict in obj_dicts:
@@ -81,3 +88,13 @@ def data(TEST):
                                            container_1.name,
                                            data=obj_data)
         TEST.objects.add(swift_object)
+
+    folder_dict = {"name": u"test folder%\u6346",
+                   "content_type": u"text/plain",
+                   "bytes": 128,
+                   "timestamp": timeutils.isotime(),
+                   "_table_data_type": u"subfolders",
+                   "last_modified": None,
+                   "hash": u"object_hash"}
+
+    TEST.folder.add(swift.PseudoFolder(folder_dict, container_1.name))

@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -44,6 +42,7 @@ from openstack_dashboard.api import lbaas
 from openstack_dashboard.api import network
 from openstack_dashboard.api import neutron
 from openstack_dashboard.api import nova
+from openstack_dashboard.api import sahara
 from openstack_dashboard.api import swift
 from openstack_dashboard.api import trove
 from openstack_dashboard.api import vpn
@@ -57,6 +56,7 @@ __all__ = [
     "heat",
     "keystone",
     "lbaas",
+    "manila",
     "network",
     "neutron",
     "nova",
@@ -64,5 +64,5 @@ __all__ = [
     "ceilometer",
     "trove",
     "vpn",
-    "manila"
+    "sahara",
 ]

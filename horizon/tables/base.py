@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -26,6 +24,7 @@ from django.core import urlresolvers
 from django import forms
 from django.http import HttpResponse  # noqa
 from django import template
+from django.template.defaultfilters import slugify  # noqa
 from django.template.defaultfilters import truncatechars  # noqa
 from django.template.loader import render_to_string
 from django.utils.datastructures import SortedDict
@@ -35,6 +34,7 @@ from django.utils.http import urlencode
 from django.utils.safestring import mark_safe
 from django.utils import termcolors
 from django.utils.translation import ugettext_lazy as _
+import six
 
 from horizon import conf
 from horizon import exceptions
@@ -158,6 +158,28 @@ class Column(html.HTMLElement):
         A dict of HTML attribute strings which should be added to this column.
         Example: ``attrs={"data-foo": "bar"}``.
 
+    .. attribute:: cell_attributes_getter
+
+       A callable to get the HTML attributes of a column cell depending
+       on the data. For example, to add additional description or help
+       information for data in a column cell (e.g. in Images panel, for the
+       column 'format'):
+
+            helpText = {
+              'ARI':'Amazon Ramdisk Image'
+              'QCOW2':'QEMU' Emulator'
+              }
+
+            getHoverHelp(data):
+              text = helpText.get(data, None)
+              if text:
+                  return {'title': text}
+              else:
+                  return {}
+            ...
+            ...
+            cell_attributes_getter = getHoverHelp
+
     .. attribute:: truncate
 
         An integer for the maximum length of the string in this column. If the
@@ -170,6 +192,8 @@ class Column(html.HTMLElement):
 
         An iterable of CSS classes which will be added when the column's text
         is displayed as a link.
+        This is left for backward compatibility. Deprecated in favor of the
+        link_attributes attribute.
         Example: ``classes=('link-foo', 'link-bar')``.
         Defaults to ``None``.
 
@@ -199,6 +223,15 @@ class Column(html.HTMLElement):
         method takes care of saving inline edited data. The tables.base.Row
         get_data method needs to be connected to table for obtaining the data.
         Example: ``update_action=UpdateCell``.
+        Defaults to ``None``.
+
+    .. attribute:: link_attrs
+
+        A dict of HTML attribute strings which should be added when the
+        column's text is displayed as a link.
+        Examples:
+        ``link_attrs={"data-foo": "bar"}``.
+        ``link_attrs={"target": "_blank", "class": "link-foo link-bar"}``.
         Defaults to ``None``.
     """
     summation_methods = {
@@ -235,7 +268,8 @@ class Column(html.HTMLElement):
                  empty_value=None, filters=None, classes=None, summation=None,
                  auto=None, truncate=None, link_classes=None, wrap_list=False,
                  form_field=None, form_field_attributes=None,
-                 update_action=None):
+                 update_action=None, link_attrs=None,
+                 cell_attributes_getter=None):
 
         self.classes = list(classes or getattr(self, "classes", []))
         super(Column, self).__init__()
@@ -266,11 +300,14 @@ class Column(html.HTMLElement):
         self.empty_value = empty_value or '-'
         self.filters = filters or []
         self.truncate = truncate
-        self.link_classes = link_classes or []
         self.wrap_list = wrap_list
         self.form_field = form_field
         self.form_field_attributes = form_field_attributes or {}
         self.update_action = update_action
+        self.link_attrs = link_attrs or {}
+        if link_classes:
+            self.link_attrs['class'] = ' '.join(link_classes)
+        self.cell_attributes_getter = cell_attributes_getter
 
         if status_choices:
             self.status_choices = status_choices
@@ -311,7 +348,7 @@ class Column(html.HTMLElement):
                 self.transform in datum:
             data = datum.get(self.transform)
         else:
-        # Basic object lookups
+            # Basic object lookups
             try:
                 data = getattr(datum, self.transform)
             except AttributeError:
@@ -401,12 +438,14 @@ class Column(html.HTMLElement):
         data = filter(lambda datum: datum is not None, data)
 
         if len(data):
-            summation = summation_function(data)
-            for filter_func in self.filters:
-                summation = filter_func(summation)
-            return summation
-        else:
-            return None
+            try:
+                summation = summation_function(data)
+                for filter_func in self.filters:
+                    summation = filter_func(summation)
+                return summation
+            except TypeError:
+                pass
+        return None
 
 
 class Row(html.HTMLElement):
@@ -563,9 +602,11 @@ class Row(html.HTMLElement):
 
     def get_ajax_update_url(self):
         table_url = self.table.get_absolute_url()
-        params = urlencode({"table": self.table.name,
-                            "action": self.ajax_action_name,
-                            "obj_id": self.table.get_object_id(self.datum)})
+        params = urlencode(SortedDict([
+            ("action", self.ajax_action_name),
+            ("table", self.table.name),
+            ("obj_id", self.table.get_object_id(self.datum))
+        ]))
         return "%s?%s" % (table_url, params)
 
     def can_be_selected(self, datum):
@@ -578,8 +619,7 @@ class Row(html.HTMLElement):
         """Fetches the updated data for the row based on the object id
         passed in. Must be implemented by a subclass to allow AJAX updating.
         """
-        raise NotImplementedError("You must define a get_data method on %s"
-                                  % self.__class__.__name__)
+        return {}
 
 
 class Cell(html.HTMLElement):
@@ -640,6 +680,9 @@ class Cell(html.HTMLElement):
             table._data_cache[column][table.get_object_id(datum)] = data
         else:
             data = column.get_data(datum)
+            if column.cell_attributes_getter:
+                cell_attributes = column.cell_attributes_getter(data) or {}
+                self.attrs.update(cell_attributes)
         return data
 
     def __repr__(self):
@@ -671,12 +714,17 @@ class Cell(html.HTMLElement):
         except Exception:
             data = None
             exc_info = sys.exc_info()
-            raise template.TemplateSyntaxError, exc_info[1], exc_info[2]
+            raise six.reraise(template.TemplateSyntaxError, exc_info[1],
+                              exc_info[2])
+
         if self.url:
-            link_classes = ' '.join(self.column.link_classes)
+            link_attrs = ' '.join(['%s="%s"' % (k, v) for (k, v) in
+                                  self.column.link_attrs.items()])
             # Escape the data inside while allowing our HTML to render
-            data = mark_safe('<a href="%s" class="%s">%s</a>' %
-                             (self.url, link_classes, escape(unicode(data))))
+            data = mark_safe('<a href="%s" %s>%s</a>' % (
+                             (escape(self.url),
+                              link_attrs,
+                              escape(unicode(data)))))
         return data
 
     @property
@@ -697,10 +745,11 @@ class Cell(html.HTMLElement):
 
         if self.column.status or \
                 self.column.name in self.column.table._meta.status_columns:
-            #returns the first matching status found
-            data_value_lower = unicode(self.data).lower()
+            # returns the first matching status found
+            data_status_lower = unicode(
+                self.column.get_raw_data(self.datum)).lower()
             for status_name, status_value in self.column.status_choices:
-                if unicode(status_name).lower() == data_value_lower:
+                if unicode(status_name).lower() == data_status_lower:
                     self._status = status_value
                     return self._status
         self._status = None
@@ -719,7 +768,7 @@ class Cell(html.HTMLElement):
         """Returns a flattened string of the cell's CSS classes."""
         if not self.url:
             self.column.classes = [cls for cls in self.column.classes
-                                    if cls != "anchor"]
+                                   if cls != "anchor"]
         column_class_string = self.column.get_final_attrs().get('class', "")
         classes = set(column_class_string.split(" "))
         if self.column.status:
@@ -733,10 +782,13 @@ class Cell(html.HTMLElement):
     def get_ajax_update_url(self):
         column = self.column
         table_url = column.table.get_absolute_url()
-        params = urlencode({"table": column.table.name,
-                            "action": self.row.ajax_cell_action_name,
-                            "obj_id": column.table.get_object_id(self.datum),
-                            "cell_name": column.name})
+        params = urlencode(SortedDict([
+            ("action", self.row.ajax_cell_action_name),
+            ("table", column.table.name),
+            ("cell_name", column.name),
+            ("obj_id", column.table.get_object_id(self.datum))
+        ]))
+
         return "%s?%s" % (table_url, params)
 
     @property
@@ -776,6 +828,13 @@ class DataTableOptions(object):
         :class:`~horizon.tables.Action` class. These actions will handle tasks
         such as bulk deletion, etc. for multiple objects at once.
 
+    .. attribute:: table_actions_menu
+
+        A list of action classes similar to ``table_actions`` except these
+        will be displayed in a menu instead of as individual buttons. Actions
+        from this list will take precedence over actions from the
+        ``table_actions`` list.
+
     .. attribute:: row_actions
 
         A list similar to ``table_actions`` except tailored to appear for
@@ -809,11 +868,18 @@ class DataTableOptions(object):
         The name of the context variable which will contain the table when
         it is rendered. Defaults to ``"table"``.
 
+    .. attribute:: prev_pagination_param
+
+        The name of the query string parameter which will be used when
+        paginating backward in this table. When using multiple tables in a
+        single view this will need to be changed to differentiate between the
+        tables. Default: ``"prev_marker"``.
+
     .. attribute:: pagination_param
 
         The name of the query string parameter which will be used when
-        paginating this table. When using multiple tables in a single
-        view this will need to be changed to differentiate between the
+        paginating forward in this table. When using multiple tables in a
+        single view this will need to be changed to differentiate between the
         tables. Default: ``"marker"``.
 
     .. attribute:: status_columns
@@ -844,10 +910,16 @@ class DataTableOptions(object):
         The class which should be used for handling the columns of this table.
         Optional. Default: :class:`~horizon.tables.Column`.
 
+    .. attribute:: css_classes
+
+        A custom CSS class or classes to add to the ``<table>`` tag of the
+        rendered table, for when the particular table requires special styling.
+        Default: ``""``.
+
     .. attribute:: mixed_data_type
 
         A toggle to indicate if the table accepts two or more types of data.
-        Optional. Default: :``False``
+        Optional. Default: ``False``
 
     .. attribute:: data_types
 
@@ -872,16 +944,21 @@ class DataTableOptions(object):
     """
     def __init__(self, options):
         self.name = getattr(options, 'name', self.__class__.__name__)
-        verbose_name = getattr(options, 'verbose_name', None) \
-                                    or self.name.title()
+        verbose_name = (getattr(options, 'verbose_name', None)
+                        or self.name.title())
         self.verbose_name = verbose_name
         self.columns = getattr(options, 'columns', None)
         self.status_columns = getattr(options, 'status_columns', [])
         self.table_actions = getattr(options, 'table_actions', [])
         self.row_actions = getattr(options, 'row_actions', [])
+        self.table_actions_menu = getattr(options, 'table_actions_menu', [])
         self.cell_class = getattr(options, 'cell_class', Cell)
         self.row_class = getattr(options, 'row_class', Row)
         self.column_class = getattr(options, 'column_class', Column)
+        self.css_classes = getattr(options, 'css_classes', '')
+        self.prev_pagination_param = getattr(options,
+                                             'prev_pagination_param',
+                                             'prev_marker')
         self.pagination_param = getattr(options, 'pagination_param', 'marker')
         self.browser_table = getattr(options, 'browser_table', None)
         self.footer = getattr(options, 'footer', True)
@@ -906,9 +983,9 @@ class DataTableOptions(object):
                                 'template',
                                 'horizon/common/_data_table.html')
         self.row_actions_template = \
-                        'horizon/common/_data_table_row_actions.html'
+            'horizon/common/_data_table_row_actions.html'
         self.table_actions_template = \
-                        'horizon/common/_data_table_table_actions.html'
+            'horizon/common/_data_table_table_actions.html'
         self.context_var_name = unicode(getattr(options,
                                                 'context_var_name',
                                                 'table'))
@@ -920,6 +997,7 @@ class DataTableOptions(object):
                                     len(self.table_actions) > 0)
 
         # Set runtime table defaults; not configurable.
+        self.has_prev_data = False
         self.has_more_data = False
 
         # Set mixed data type table attr
@@ -1003,7 +1081,8 @@ class DataTableMetaclass(type):
         # Gather and register actions for later access since we only want
         # to instantiate them once.
         # (list() call gives deterministic sort order, which sets don't have.)
-        actions = list(set(opts.row_actions) | set(opts.table_actions))
+        actions = list(set(opts.row_actions) | set(opts.table_actions) |
+                       set(opts.table_actions_menu))
         actions.sort(key=attrgetter('name'))
         actions_dict = SortedDict([(action.name, action())
                                    for action in actions])
@@ -1016,6 +1095,7 @@ class DataTableMetaclass(type):
         return type.__new__(mcs, name, bases, attrs)
 
 
+@six.add_metaclass(DataTableMetaclass)
 class DataTable(object):
     """A class which defines a table with all data and associated actions.
 
@@ -1040,7 +1120,6 @@ class DataTable(object):
         :class:`~horizon.tables.FilterAction` class (if one is provided)
         using the current request's query parameters.
     """
-    __metaclass__ = DataTableMetaclass
 
     def __init__(self, request, data=None, needs_form_wrapper=None, **kwargs):
         self.request = request
@@ -1063,7 +1142,7 @@ class DataTable(object):
 
         # Associate these actions with this table
         for action in self.base_actions.values():
-            action.table = self
+            action.associate_with_table(self)
 
         self.needs_summary_row = any([col.summation
                                       for col in self.columns.values()])
@@ -1103,21 +1182,42 @@ class DataTable(object):
                                     and action.needs_preloading)
                 valid_method = (request_method == action.method)
                 if valid_method or needs_preloading:
+                    filter_field = self.get_filter_field()
                     if self._meta.mixed_data_type:
                         self._filtered_data = action.data_type_filter(self,
                                                                 self.data,
                                                                 filter_string)
-                    else:
+                    elif not action.is_api_filter(filter_field):
                         self._filtered_data = action.filter(self,
                                                             self.data,
                                                             filter_string)
         return self._filtered_data
 
+    def slugify_name(self):
+        return str(slugify(self._meta.name))
+
     def get_filter_string(self):
+        """Get the filter string value. For 'server' type filters this is
+        saved in the session so that it gets persisted across table loads.
+        For other filter types this is obtained from the POST dict.
+        """
         filter_action = self._meta._filter_action
         param_name = filter_action.get_param_name()
-        filter_string = self.request.POST.get(param_name, '')
+        filter_string = ''
+        if filter_action.filter_type == 'server':
+            filter_string = self.request.session.get(param_name, '')
+        else:
+            filter_string = self.request.POST.get(param_name, '')
         return filter_string
+
+    def get_filter_field(self):
+        """Get the filter field value used for 'server' type filters. This
+        is the value from the filter action's list of filter choices.
+        """
+        filter_action = self._meta._filter_action
+        param_name = '%s_field' % filter_action.get_param_name()
+        filter_field = self.request.session.get(param_name, '')
+        return filter_field
 
     def _populate_data_cache(self):
         self._data_cache = {}
@@ -1200,7 +1300,7 @@ class DataTable(object):
         if not matches:
             raise exceptions.Http302(self.get_absolute_url(),
                                      _('No match returned for the id "%s".')
-                                       % lookup)
+                                     % lookup)
         return matches[0]
 
     @property
@@ -1225,8 +1325,12 @@ class DataTable(object):
 
     def get_table_actions(self):
         """Returns a list of the action instances for this table."""
-        bound_actions = [self.base_actions[action.name] for
-                         action in self._meta.table_actions]
+        button_actions = [self.base_actions[action.name] for action in
+                          self._meta.table_actions if
+                          action not in self._meta.table_actions_menu]
+        menu_actions = [self.base_actions[action.name] for
+                        action in self._meta.table_actions_menu]
+        bound_actions = button_actions + menu_actions
         return [action for action in bound_actions if
                 self._filter_action(action, self.request)]
 
@@ -1251,16 +1355,37 @@ class DataTable(object):
             bound_actions.append(bound_action)
         return bound_actions
 
+    def set_multiselect_column_visibility(self, visible=True):
+        """hide checkbox column if no current table action is allowed."""
+        if not self.multi_select:
+            return
+        select_column = self.columns.values()[0]
+        # Try to find if the hidden class need to be
+        # removed or added based on visible flag.
+        hidden_found = 'hidden' in select_column.classes
+        if hidden_found and visible:
+            select_column.classes.remove('hidden')
+        elif not hidden_found and not visible:
+            select_column.classes.append('hidden')
+
     def render_table_actions(self):
         """Renders the actions specified in ``Meta.table_actions``."""
         template_path = self._meta.table_actions_template
         table_actions_template = template.loader.get_template(template_path)
         bound_actions = self.get_table_actions()
-        extra_context = {"table_actions": bound_actions}
-        if self._meta.filter and \
-           self._filter_action(self._meta._filter_action, self.request):
+        extra_context = {"table_actions": bound_actions,
+                         "table_actions_buttons": [],
+                         "table_actions_menu": []}
+        if self._meta.filter and (
+                self._filter_action(self._meta._filter_action, self.request)):
             extra_context["filter"] = self._meta._filter_action
+        for action in bound_actions:
+            if action.__class__ in self._meta.table_actions_menu:
+                extra_context['table_actions_menu'].append(action)
+            elif action != extra_context.get('filter'):
+                extra_context['table_actions_buttons'].append(action)
         context = template.RequestContext(self.request, extra_context)
+        self.set_multiselect_column_visibility(len(bound_actions) > 0)
         return table_actions_template.render(context)
 
     def render_row_actions(self, datum):
@@ -1351,9 +1476,13 @@ class DataTable(object):
         if table_name == self.name:
             # Handle AJAX row updating.
             new_row = self._meta.row_class(self)
+
             if new_row.ajax and new_row.ajax_action_name == action_name:
                 try:
                     datum = new_row.get_data(request, obj_id)
+                    if self.get_object_id(datum) == self.current_item_id:
+                        self.selected = True
+                        new_row.classes.append('current_selected')
                     new_row.load_cells(datum)
                     error = False
                 except Exception:
@@ -1507,6 +1636,15 @@ class DataTable(object):
             return datum.name
         return None
 
+    def has_prev_data(self):
+        """Returns a boolean value indicating whether there is previous data
+        available to this table from the source (generally an API).
+
+        The method is largely meant for internal use, but if you want to
+        override it to provide custom behavior you can do so at your own risk.
+        """
+        return self._meta.has_prev_data
+
     def has_more_data(self):
         """Returns a boolean value indicating whether there is more data
         available to this table from the source (generally an API).
@@ -1516,14 +1654,31 @@ class DataTable(object):
         """
         return self._meta.has_more_data
 
+    def get_prev_marker(self):
+        """Returns the identifier for the first object in the current data set
+        for APIs that use marker/limit-based paging.
+        """
+        return http.urlquote_plus(self.get_object_id(self.data[0])) \
+            if self.data else ''
+
     def get_marker(self):
         """Returns the identifier for the last object in the current data set
         for APIs that use marker/limit-based paging.
         """
-        return http.urlquote_plus(self.get_object_id(self.data[-1]))
+        return http.urlquote_plus(self.get_object_id(self.data[-1])) \
+            if self.data else ''
+
+    def get_prev_pagination_string(self):
+        """Returns the query parameter string to paginate this table
+        to the previous page.
+        """
+        return "=".join([self._meta.prev_pagination_param,
+                         self.get_prev_marker()])
 
     def get_pagination_string(self):
-        """Returns the query parameter string to paginate this table."""
+        """Returns the query parameter string to paginate this table
+        to the next page.
+        """
         return "=".join([self._meta.pagination_param, self.get_marker()])
 
     def calculate_row_status(self, statuses):
@@ -1583,5 +1738,11 @@ class DataTable(object):
             # re-raising as a TemplateSyntaxError makes them visible.
             LOG.exception("Error while rendering table rows.")
             exc_info = sys.exc_info()
-            raise template.TemplateSyntaxError, exc_info[1], exc_info[2]
+            raise six.reraise(template.TemplateSyntaxError, exc_info[1],
+                              exc_info[2])
+
         return rows
+
+    def css_classes(self):
+        """Returns the additional CSS class to be added to <table> tag."""
+        return self._meta.css_classes

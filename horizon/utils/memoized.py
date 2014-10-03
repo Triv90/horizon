@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-#
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,6 +15,8 @@
 import functools
 import warnings
 import weakref
+
+import six
 
 
 class UnhashableKeyWarning(RuntimeWarning):
@@ -42,7 +42,7 @@ def _get_key(args, kwargs, remove_callback):
     # Sort it, so that we don't depend on the order of keys.
     weak_kwargs = tuple(sorted(
         (key, _try_weakref(value, remove_callback))
-        for (key, value) in kwargs.iteritems()))
+        for (key, value) in six.iteritems(kwargs)))
     return weak_args, weak_kwargs
 
 

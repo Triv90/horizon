@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -19,6 +17,7 @@ import logging
 
 from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
 
 from horizon import exceptions
 from horizon import tables
@@ -32,12 +31,26 @@ class CreateNetworkProfile(tables.LinkAction):
     name = "create"
     verbose_name = _("Create Network Profile")
     url = "horizon:router:nexus1000v:create_network_profile"
-    classes = ("ajax-modal", "btn-create")
+    classes = ("ajax-modal",)
+    icon = "plus"
 
 
 class DeleteNetworkProfile(tables.DeleteAction):
-    data_type_singular = _("Network Profile")
-    data_type_plural = _("Network Profiles")
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Network Profile",
+            u"Delete Network Profiles",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Deleted Network Profile",
+            u"Deleted Network Profiles",
+            count
+        )
 
     def delete(self, request, obj_id):
         try:
@@ -53,7 +66,8 @@ class EditNetworkProfile(tables.LinkAction):
     name = "update"
     verbose_name = _("Edit Network Profile")
     url = "horizon:router:nexus1000v:update_network_profile"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
 
 
 class NetworkProfile(tables.DataTable):

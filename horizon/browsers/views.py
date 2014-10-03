@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -42,6 +40,16 @@ class ResourceBrowserView(MultiTableView):
             item = browser.navigable_item_name.lower()
             ct._no_data_message = _("Select a %s to browse.") % item
         return browser
+
+    def get_tables(self):
+        tables = super(ResourceBrowserView, self).get_tables()
+        # Tells the navigation table what is selected.
+        navigation_table = tables[
+            self.browser_class.navigation_table_class._meta.name]
+        navigation_item = self.kwargs.get(
+            self.browser_class.navigation_kwarg_name)
+        navigation_table.current_item_id = navigation_item
+        return tables
 
     def get_context_data(self, **kwargs):
         context = super(ResourceBrowserView, self).get_context_data(**kwargs)

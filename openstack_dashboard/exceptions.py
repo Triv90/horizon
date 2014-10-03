@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -25,23 +23,20 @@ from keystoneclient import exceptions as keystoneclient
 from manilaclient import exceptions as manilaclient
 from neutronclient.common import exceptions as neutronclient
 from novaclient import exceptions as novaclient
+from requests import exceptions as requests
+from saharaclient.api import base as saharaclient
 from swiftclient import client as swiftclient
 from troveclient import exceptions as troveclient
 
 
 UNAUTHORIZED = (
     keystoneclient.Unauthorized,
-    keystoneclient.Forbidden,
     cinderclient.Unauthorized,
-    cinderclient.Forbidden,
     novaclient.Unauthorized,
-    novaclient.Forbidden,
     glanceclient.Unauthorized,
     manilaclient.Unauthorized,
     neutronclient.Unauthorized,
-    neutronclient.Forbidden,
     heatclient.HTTPUnauthorized,
-    heatclient.HTTPForbidden,
     troveclient.Unauthorized,
 )
 
@@ -52,8 +47,7 @@ NOT_FOUND = (
     novaclient.NotFound,
     glanceclient.NotFound,
     manilaclient.NotFound,
-    neutronclient.NetworkNotFoundClient,
-    neutronclient.PortNotFoundClient,
+    neutronclient.NotFound,
     heatclient.HTTPNotFound,
     troveclient.NotFound,
 )
@@ -64,20 +58,20 @@ RECOVERABLE = (
     keystoneclient.ClientException,
     # AuthorizationFailure is raised when Keystone is "unavailable".
     keystoneclient.AuthorizationFailure,
+    keystoneclient.Forbidden,
     cinderclient.ClientException,
     cinderclient.ConnectionError,
+    cinderclient.Forbidden,
     novaclient.ClientException,
+    novaclient.Forbidden,
     glanceclient.ClientException,
     manilaclient.ClientException,
-    # NOTE(amotoki): Neutron exceptions other than the first one
-    # are recoverable in many cases (e.g., NetworkInUse is not
-    # raised once VMs which use the network are terminated).
+    neutronclient.Forbidden,
     neutronclient.NeutronClientException,
-    neutronclient.NetworkInUseClient,
-    neutronclient.PortInUseClient,
-    neutronclient.AlreadyAttachedClient,
-    neutronclient.StateInvalidClient,
     swiftclient.ClientException,
+    heatclient.HTTPForbidden,
     heatclient.HTTPException,
-    troveclient.ClientException
+    troveclient.ClientException,
+    saharaclient.APIException,
+    requests.RequestException,
 )

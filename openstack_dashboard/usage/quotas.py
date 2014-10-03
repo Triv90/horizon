@@ -67,6 +67,31 @@ MANILA_QUOTA_FIELDS = (
 QUOTA_FIELDS = NOVA_QUOTA_FIELDS + CINDER_QUOTA_FIELDS + NEUTRON_QUOTA_FIELDS
 QUOTA_FIELDS = QUOTA_FIELDS + MANILA_QUOTA_FIELDS
 
+QUOTA_NAMES = {
+    "metadata_items": _('Metadata Items'),
+    "cores": _('VCPUs'),
+    "instances": _('Instances'),
+    "injected_files": _('Injected Files'),
+    "injected_file_content_bytes": _('Injected File Content Bytes'),
+    "ram": _('RAM (MB)'),
+    "floating_ips": _('Floating IPs'),
+    "fixed_ips": _('Fixed IPs'),
+    "security_groups": _('Security Groups'),
+    "security_group_rules": _('Security Group Rules'),
+    "key_pairs": _('Key Pairs'),
+    "injected_file_path_bytes": _('Injected File Path Bytes'),
+    "volumes": _('Volumes'),
+    "snapshots": _('Volume Snapshots'),
+    "gigabytes": _('Total Size of Volumes and Snapshots (GB)'),
+    "network": _("Networks"),
+    "subnet": _("Subnets"),
+    "port": _("Ports"),
+    "router": _("Routers"),
+    "floatingip": _('Floating IPs'),
+    "security_group": _("Security Groups"),
+    "security_group_rule": _("Security Group Rules")
+}
+
 
 class QuotaUsage(dict):
     """Tracks quota limit, used, and available for a given set of quotas."""
@@ -81,9 +106,9 @@ class QuotaUsage(dict):
         return self.usages[key]
 
     def __setitem__(self, key, value):
-        raise NotImplemented("Directly setting QuotaUsage values is not "
-                             "supported. Please use the add_quota and "
-                             "tally methods.")
+        raise NotImplementedError("Directly setting QuotaUsage values is not "
+                                  "supported. Please use the add_quota and "
+                                  "tally methods.")
 
     def __repr__(self):
         return repr(dict(self.usages))
@@ -189,7 +214,7 @@ def get_disabled_quotas(request):
         # Remove the nova network quotas
         disabled_quotas.extend(['floating_ips', 'fixed_ips'])
 
-        if neutron.is_security_group_extension_supported(request):
+        if neutron.is_extension_supported(request, 'security-group'):
             # If Neutron security group is supported, disable Nova quotas
             disabled_quotas.extend(['security_groups', 'security_group_rules'])
         else:
@@ -217,7 +242,12 @@ def tenant_quota_usages(request):
         usages.add_quota(quota)
 
     # Get our usages.
-    floating_ips = network.tenant_floating_ip_list(request)
+    floating_ips = []
+    try:
+        if network.floating_ip_supported(request):
+            floating_ips = network.tenant_floating_ip_list(request)
+    except Exception:
+        pass
     flavors = dict([(f.id, f) for f in nova.flavor_list(request)])
     instances, has_more = nova.server_list(request)
     # Fetch deleted flavors if necessary.
@@ -267,8 +297,8 @@ def tenant_quota_usages(request):
 
 
 def tenant_limit_usages(request):
-    #TODO(licostan): This method shall be removed from Quota module.
-    #ProjectUsage/BaseUsage maybe used instead on volume/image dashboards.
+    # TODO(licostan): This method shall be removed from Quota module.
+    # ProjectUsage/BaseUsage maybe used instead on volume/image dashboards.
     limits = {}
 
     try:
@@ -281,10 +311,12 @@ def tenant_limit_usages(request):
         try:
             limits.update(cinder.tenant_absolute_limits(request))
             volumes = cinder.volume_list(request)
+            snapshots = cinder.volume_snapshot_list(request)
             total_size = sum([getattr(volume, 'size', 0) for volume
                               in volumes])
             limits['gigabytesUsed'] = total_size
             limits['volumesUsed'] = len(volumes)
+            limits['snapshotsUsed'] = len(snapshots)
         except Exception:
             msg = _("Unable to retrieve volume limit information.")
             exceptions.handle(request, msg)

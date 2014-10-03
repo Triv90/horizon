@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Kylin, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -41,7 +39,7 @@ class UpdateDefaultQuotas(tables.LinkAction):
 def get_quota_name(quota):
     QUOTA_NAMES = {
         'injected_file_content_bytes': _('Injected File Content Bytes'),
-        'injected_file_path_bytes': _('Injected File Path Bytes'),
+        'injected_file_path_bytes': _('Length of Injected File Path'),
         'metadata_items': _('Metadata Items'),
         'cores': _('VCPUs'),
         'instances': _('Instances'),
@@ -58,8 +56,9 @@ def get_quota_name(quota):
         'key_pairs': _('Key Pairs'),
         'fixed_ips': _('Fixed IPs'),
         'volumes_volume_luks': _('LUKS Volumes'),
-        'snapshots_volume_luks': _('LUKS Volumes Snapshots'),
-        'gigabytes_volume_luks': _('LUKS Volumes Size (GB)'),
+        'snapshots_volume_luks': _('LUKS Volume Snapshots'),
+        'gigabytes_volume_luks':
+        _('Total Size of LUKS Volumes and Snapshots (GB)'),
         'dm-crypt': _('dm-crypt'),
     }
     return QUOTA_NAMES.get(quota.name, quota.name.replace("_", " ").title())

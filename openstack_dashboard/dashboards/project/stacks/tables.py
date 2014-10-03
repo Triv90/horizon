@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
 # a copy of the License at
@@ -14,10 +12,10 @@
 
 from django.core import urlresolvers
 from django.http import Http404  # noqa
-from django.template.defaultfilters import timesince  # noqa
 from django.template.defaultfilters import title  # noqa
 from django.utils.http import urlencode  # noqa
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
 
 from horizon import messages
 from horizon import tables
@@ -33,28 +31,42 @@ class LaunchStack(tables.LinkAction):
     name = "launch"
     verbose_name = _("Launch Stack")
     url = "horizon:project:stacks:select_template"
-    classes = ("btn-create", "ajax-modal")
+    classes = ("ajax-modal",)
+    icon = "plus"
+    policy_rules = (("orchestration", "cloudformation:CreateStack"),)
 
 
 class ChangeStackTemplate(tables.LinkAction):
     name = "edit"
     verbose_name = _("Change Stack Template")
     url = "horizon:project:stacks:change_template"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
 
     def get_link_url(self, stack):
         return urlresolvers.reverse(self.url, args=[stack.id])
 
 
-class DeleteStack(tables.BatchAction):
-    name = "delete"
-    action_present = _("Delete")
-    action_past = _("Scheduled deletion of %(data_type)s")
-    data_type_singular = _("Stack")
-    data_type_plural = _("Stacks")
-    classes = ('btn-danger', 'btn-terminate')
+class DeleteStack(tables.DeleteAction):
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Delete Stack",
+            u"Delete Stacks",
+            count
+        )
 
-    def action(self, request, stack_id):
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Deleted Stack",
+            u"Deleted Stacks",
+            count
+        )
+
+    policy_rules = (("orchestration", "cloudformation:DeleteStack"),)
+
+    def delete(self, request, stack_id):
         api.heat.stack_delete(request, stack_id)
 
     def allowed(self, request, stack):
@@ -90,10 +102,12 @@ class StacksTable(tables.DataTable):
                          link="horizon:project:stacks:detail",)
     created = tables.Column("creation_time",
                             verbose_name=_("Created"),
-                            filters=(filters.parse_isotime, timesince))
+                            filters=(filters.parse_isotime,
+                                     filters.timesince_or_never))
     updated = tables.Column("updated_time",
                             verbose_name=_("Updated"),
-                            filters=(filters.parse_isotime, timesince))
+                            filters=(filters.parse_isotime,
+                                     filters.timesince_or_never))
     status = tables.Column("status",
                            filters=(title, filters.replace_underscores),
                            verbose_name=_("Status"),
@@ -106,6 +120,7 @@ class StacksTable(tables.DataTable):
     class Meta:
         name = "stacks"
         verbose_name = _("Stacks")
+        pagination_param = 'stack_marker'
         status_columns = ["status", ]
         row_class = StacksUpdateRow
         table_actions = (LaunchStack, DeleteStack,)
@@ -113,17 +128,23 @@ class StacksTable(tables.DataTable):
                        ChangeStackTemplate)
 
 
+def get_resource_url(obj):
+    return urlresolvers.reverse('horizon:project:stacks:resource',
+                                args=(obj.stack_id, obj.resource_name))
+
+
 class EventsTable(tables.DataTable):
 
     logical_resource = tables.Column('resource_name',
                                      verbose_name=_("Stack Resource"),
-                                     link=lambda d: d.resource_name,)
+                                     link=get_resource_url)
     physical_resource = tables.Column('physical_resource_id',
                                       verbose_name=_("Resource"),
                                       link=mappings.resource_to_url)
     timestamp = tables.Column('event_time',
                               verbose_name=_("Time Since Event"),
-                              filters=(filters.parse_isotime, timesince))
+                              filters=(filters.parse_isotime,
+                                       filters.timesince_or_never))
     status = tables.Column("resource_status",
                            filters=(title, filters.replace_underscores),
                            verbose_name=_("Status"),)
@@ -161,7 +182,7 @@ class ResourcesTable(tables.DataTable):
 
     logical_resource = tables.Column('resource_name',
                                      verbose_name=_("Stack Resource"),
-                                     link=lambda d: d.resource_name)
+                                     link=get_resource_url)
     physical_resource = tables.Column('physical_resource_id',
                                      verbose_name=_("Resource"),
                                      link=mappings.resource_to_url)
@@ -169,7 +190,8 @@ class ResourcesTable(tables.DataTable):
                            verbose_name=_("Stack Resource Type"),)
     updated_time = tables.Column('updated_time',
                               verbose_name=_("Date Updated"),
-                              filters=(filters.parse_isotime, timesince))
+                              filters=(filters.parse_isotime,
+                                       filters.timesince_or_never))
     status = tables.Column("resource_status",
                            filters=(title, filters.replace_underscores),
                            verbose_name=_("Status"),

@@ -15,11 +15,11 @@
 </div>
 <div class="right">
     <h3>{% trans "Description:" %}</h3>
-    <p>{% trans "You may update pool for current tenant here: edit name, description, load balancing method or admin state." %}</p>
+    <p>{% trans "You may update pool attributes here: edit name, description, load balancing method or admin state." %}</p>
 </div>
 {% endblock %}
 
 {% block modal-footer %}
   <input class="btn btn-primary pull-right" type="submit" value="{% trans "Save Changes" %}" />
-  <a href="{% url 'horizon:project:loadbalancers:index' %}" class="btn secondary cancel close">{% trans "Cancel" %}</a>
+  <a href="{% url 'horizon:project:loadbalancers:index' %}" class="btn btn-default secondary cancel close">{% trans "Cancel" %}</a>
 {% endblock %}

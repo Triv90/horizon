@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -42,12 +40,29 @@ class AdminEditImage(project_tables.EditImage):
         return True
 
 
+class UpdateMetadata(tables.LinkAction):
+    url = "horizon:admin:images:update_metadata"
+    name = "update_metadata"
+    verbose_name = _("Update Metadata")
+    classes = ("ajax-modal",)
+    icon = "pencil"
+
+
 class UpdateRow(tables.Row):
     ajax = True
 
     def get_data(self, request, image_id):
         image = api.glance.image_get(request, image_id)
         return image
+
+
+class AdminImageFilterAction(tables.FilterAction):
+    filter_type = "server"
+    filter_choices = (('name', _("Image Name ="), True),
+                      ('status', _('Status ='), True),
+                      ('disk_format', _('Format ='), True),
+                      ('size_min', _('Min. Size (MB)'), True),
+                      ('size_max', _('Max. Size (MB)'), True))
 
 
 class AdminImagesTable(project_tables.ImagesTable):
@@ -60,5 +75,6 @@ class AdminImagesTable(project_tables.ImagesTable):
         row_class = UpdateRow
         status_columns = ["status"]
         verbose_name = _("Images")
-        table_actions = (AdminCreateImage, AdminDeleteImage)
-        row_actions = (AdminEditImage, AdminDeleteImage)
+        table_actions = (AdminCreateImage, AdminDeleteImage,
+                         AdminImageFilterAction)
+        row_actions = (AdminEditImage, UpdateMetadata, AdminDeleteImage)

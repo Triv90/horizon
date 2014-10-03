@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -16,8 +14,6 @@
 
 from django.utils.translation import ugettext_lazy as _
 
-from openstack_dashboard.api import neutron
-
 import horizon
 
 
@@ -29,5 +25,4 @@ class Router(horizon.Dashboard):
     permissions = ('openstack.roles.admin',)
 
 
-if neutron.is_port_profiles_supported():
-    horizon.register(Router)
+horizon.register(Router)

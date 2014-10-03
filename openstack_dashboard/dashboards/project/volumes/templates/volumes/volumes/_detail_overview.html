@@ -3,7 +3,7 @@
 
 <h3>{% trans "Volume Overview" %}</h3>
 
-<div class="info row-fluid detail">
+<div class="info row detail">
   <h4>{% trans "Info" %}</h4>
   <hr class="header_rule">
   <dl>
@@ -20,7 +20,7 @@
   </dl>
 </div>
 
-<div class="specs row-fluid detail">
+<div class="specs row detail">
   <h4>{% trans "Specs" %}</h4>
   <hr class="header_rule">
   <dl>
@@ -31,7 +31,7 @@
   </dl>
 </div>
 
-<div class="status row-fluid detail">
+<div class="status row detail">
   <h4>{% trans "Attachments" %}</h4>
   <hr class="header_rule">
   <dl>
@@ -49,7 +49,21 @@
   </dl>
 </div>
 
-<div class="status row-fluid detail">
+{% if volume.volume_image_metadata %}
+<div class="status row detail">
+  <h4>{% trans "Volume Source" %}</h4>
+  <hr class="header_rule">
+  <dl>
+      <dt>{% trans "Image" %}</dt>
+      <dd>
+        {% url 'horizon:project:images:images:detail' volume.volume_image_metadata.image_id as image_url%}
+        <a href="{{ image_url }}">{{ volume.volume_image_metadata.image_name }}</a>
+      </dd>
+  </dl>
+</div>
+{% endif %}
+
+<div class="status row detail">
   <h4>{% trans "Metadata" %}</h4>
   <hr class="header_rule">
   <dl>

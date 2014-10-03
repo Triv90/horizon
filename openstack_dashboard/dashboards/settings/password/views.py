@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Centrin Data Systems Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,8 +14,6 @@
 
 from horizon import forms
 
-from django.core.urlresolvers import reverse_lazy
-
 from openstack_dashboard.dashboards.settings.password \
     import forms as pass_forms
 
@@ -25,4 +21,3 @@ from openstack_dashboard.dashboards.settings.password \
 class PasswordView(forms.ModalFormView):
     form_class = pass_forms.PasswordForm
     template_name = 'settings/password/change.html'
-    success_url = reverse_lazy('logout')

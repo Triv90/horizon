@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,24 +13,36 @@
 #    under the License.
 
 from django import shortcuts
-from django.views.decorators import vary
+import django.views.decorators.vary
 
 import horizon
+from horizon import base
 
-from openstack_auth import views
+from openstack_auth import forms
 
 
 def get_user_home(user):
+    dashboard = None
     if user.is_superuser:
-        return horizon.get_dashboard('admin').get_absolute_url()
-    return horizon.get_dashboard('project').get_absolute_url()
+        try:
+            dashboard = horizon.get_dashboard('admin')
+        except base.NotRegistered:
+            pass
+
+    if dashboard is None:
+        dashboard = horizon.get_default_dashboard()
+
+    return dashboard.get_absolute_url()
 
 
-@vary.vary_on_cookie
+@django.views.decorators.vary.vary_on_cookie
 def splash(request):
     if request.user.is_authenticated():
-        return shortcuts.redirect(get_user_home(request.user))
-    form = views.Login(request)
-    request.session.clear()
-    request.session.set_test_cookie()
-    return shortcuts.render(request, 'splash.html', {'form': form})
+        response = shortcuts.redirect(horizon.get_user_home(request.user))
+    else:
+        form = forms.Login(request)
+        request.session.clear()
+        request.session.set_test_cookie()
+        response = shortcuts.render(request, 'splash.html', {'form': form})
+    response.delete_cookie('logout_reason')
+    return response

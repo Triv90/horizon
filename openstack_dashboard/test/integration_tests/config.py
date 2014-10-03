@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
 # a copy of the License at
@@ -24,6 +22,9 @@ DashboardGroup = [
     cfg.StrOpt('login_url',
                default='http://localhost/auth/login/',
                help="Login page for the dashboard"),
+    cfg.StrOpt('help_url',
+               default='http://docs.openstack.org/',
+               help="Dashboard help page url"),
     cfg.IntOpt('page_timeout',
                default=10,
                help="Timeout in seconds"),
@@ -47,6 +48,11 @@ IdentityGroup = [
                secret=True),
 ]
 
+AvailableServiceGroup = [
+    cfg.BoolOpt('sahara',
+                default=False),
+]
+
 
 def _get_config_files():
     conf_dir = os.path.join(
@@ -62,5 +68,6 @@ def get_config():
 
     cfg.CONF.register_opts(DashboardGroup, group="dashboard")
     cfg.CONF.register_opts(IdentityGroup, group="identity")
+    cfg.CONF.register_opts(AvailableServiceGroup, group="service_available")
 
     return cfg.CONF

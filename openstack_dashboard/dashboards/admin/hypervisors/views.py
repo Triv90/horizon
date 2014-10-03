@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 B1 Systems GmbH
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,19 +16,25 @@ from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
 from horizon import tables
+from horizon import tabs
+from horizon.utils import functions as utils
+
 from openstack_dashboard import api
 from openstack_dashboard.dashboards.admin.hypervisors \
     import tables as project_tables
+from openstack_dashboard.dashboards.admin.hypervisors \
+    import tabs as project_tabs
 
 
-class AdminIndexView(tables.DataTableView):
-    table_class = project_tables.AdminHypervisorsTable
+class AdminIndexView(tabs.TabbedTableView):
+    tab_group_class = project_tabs.HypervisorHostTabs
     template_name = 'admin/hypervisors/index.html'
 
     def get_data(self):
         hypervisors = []
         try:
             hypervisors = api.nova.hypervisor_list(self.request)
+            hypervisors.sort(key=utils.natural_sort('hypervisor_hostname'))
         except Exception:
             exceptions.handle(self.request,
                 _('Unable to retrieve hypervisor information.'))

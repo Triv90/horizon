@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -17,6 +15,7 @@ import logging
 import pkgutil
 
 from django.utils import importlib
+import six
 
 
 def import_submodules(module):
@@ -40,17 +39,18 @@ def import_dashboard_config(modules):
     """Imports configuration from all the modules and merges it."""
     config = collections.defaultdict(dict)
     for module in modules:
-        for key, submodule in import_submodules(module).iteritems():
+        for key, submodule in six.iteritems(import_submodules(module)):
             if hasattr(submodule, 'DASHBOARD'):
                 dashboard = submodule.DASHBOARD
                 config[dashboard].update(submodule.__dict__)
-            elif hasattr(submodule, 'PANEL'):
+            elif (hasattr(submodule, 'PANEL')
+                     or hasattr(submodule, 'PANEL_GROUP')):
                 config[submodule.__name__] = submodule.__dict__
-                #_update_panels(config, submodule)
             else:
                 logging.warning("Skipping %s because it doesn't have DASHBOARD"
-                                " or PANEL defined.", submodule.__name__)
-    return sorted(config.iteritems(),
+                                ", PANEL or PANEL_GROUP defined.",
+                                submodule.__name__)
+    return sorted(six.iteritems(config),
                   key=lambda c: c[1]['__name__'].rsplit('.', 1))
 
 
@@ -84,23 +84,44 @@ def update_dashboards(modules, horizon_config, installed_apps):
     deferred until the horizon autodiscover is completed, configurations are
     applied in alphabetical order of files where it was imported.
     """
-    dashboards = []
+    enabled_dashboards = []
+    disabled_dashboards = []
     exceptions = {}
     apps = []
+    angular_modules = []
+    js_files = set()
     panel_customization = []
+    update_horizon_config = {}
     for key, config in import_dashboard_config(modules):
         if config.get('DISABLED', False):
+            if config.get('DASHBOARD'):
+                disabled_dashboards.append(config.get('DASHBOARD'))
             continue
+        apps.extend(config.get('ADD_INSTALLED_APPS', []))
+        exceptions.update(config.get('ADD_EXCEPTIONS', {}))
+        angular_modules.extend(config.get('ADD_ANGULAR_MODULES', []))
+        js_files.update(config.get('ADD_JS_FILES', []))
+        update_horizon_config.update(
+            config.get('UPDATE_HORIZON_CONFIG', {}))
         if config.get('DASHBOARD'):
             dashboard = key
-            dashboards.append(dashboard)
-            exceptions.update(config.get('ADD_EXCEPTIONS', {}))
-            apps.extend(config.get('ADD_INSTALLED_APPS', []))
+            enabled_dashboards.append(dashboard)
             if config.get('DEFAULT', False):
                 horizon_config['default_dashboard'] = dashboard
-        elif config.get('PANEL'):
+        elif config.get('PANEL') or config.get('PANEL_GROUP'):
+            config.pop("__builtins__", None)
             panel_customization.append(config)
+    # Preserve the dashboard order specified in settings
+    config_dashboards = horizon_config.get('dashboards', [])
+    dashboards = ([d for d in config_dashboards
+                   if d not in disabled_dashboards] +
+                  [d for d in enabled_dashboards
+                   if d not in config_dashboards])
+
     horizon_config['panel_customization'] = panel_customization
     horizon_config['dashboards'] = tuple(dashboards)
-    horizon_config['exceptions'].update(exceptions)
+    horizon_config.setdefault('exceptions', {}).update(exceptions)
+    horizon_config.update(update_horizon_config)
+    horizon_config.setdefault('angular_modules', []).extend(angular_modules)
+    horizon_config.setdefault('js_files', []).extend(js_files)
     installed_apps[:] = apps + installed_apps

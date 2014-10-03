@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 Nebula, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,6 +13,8 @@
 #    under the License.
 
 import sys
+
+import six
 
 from django.template.loader import render_to_string
 from django.template import TemplateSyntaxError  # noqa
@@ -198,7 +198,10 @@ class TabGroup(html.HTMLElement):
         """
         selected = self.request.GET.get(self.param_name, None)
         if selected:
-            tab_group, tab_name = selected.split(SEPARATOR)
+            try:
+                tab_group, tab_name = selected.split(SEPARATOR)
+            except ValueError:
+                return None
             if tab_group == self.get_id():
                 self._selected = self.get_tab(tab_name)
         return self._selected
@@ -237,11 +240,17 @@ class Tab(html.HTMLElement):
 
         Read-only access to determine whether or not this tab's data should
         be loaded immediately.
+
+    .. attribute:: permissions
+
+        A list of permission names which this tab requires in order to be
+        displayed. Defaults to an empty list (``[]``).
     """
     name = None
     slug = None
     preload = True
     _active = None
+    permissions = []
 
     def __init__(self, tab_group, request=None):
         super(Tab, self).__init__()
@@ -254,11 +263,15 @@ class Tab(html.HTMLElement):
         self.tab_group = tab_group
         self.request = request
         if request:
-            self._allowed = self.allowed(request)
+            self._allowed = self.allowed(request) and (
+                self._has_permissions(request))
             self._enabled = self.enabled(request)
 
     def __repr__(self):
         return "<%s: %s>" % (self.__class__.__name__, self.slug)
+
+    def _has_permissions(self, request):
+        return request.user.has_perms(self.permissions)
 
     def is_active(self):
         """Method to access whether or not this tab is the active tab."""
@@ -300,7 +313,7 @@ class Tab(html.HTMLElement):
             raise
         except Exception:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            raise TemplateSyntaxError, exc_value, exc_traceback
+            raise six.reraise(TemplateSyntaxError, exc_value, exc_traceback)
         return render_to_string(self.get_template_name(self.request), context)
 
     def get_id(self):
@@ -342,12 +355,11 @@ class Tab(html.HTMLElement):
                                  % self.__class__.__name__)
         return self.template_name
 
-    def get_context_data(self, request):
+    def get_context_data(self, request, **kwargs):
         """This method should return a dictionary of context data used to
         render the tab. Required.
         """
-        raise NotImplementedError("%s needs to define a get_context_data "
-                                  "method." % self.__class__.__name__)
+        return kwargs
 
     def enabled(self, request):
         """Determines whether or not the tab should be accessible
@@ -429,18 +441,19 @@ class TableTab(Tab):
                                               "on %s." % (func_name, cls_name))
                 # Load the data.
                 table.data = data_func()
+                table._meta.has_prev_data = self.has_prev_data(table)
                 table._meta.has_more_data = self.has_more_data(table)
             # Mark our data as loaded so we don't run the loaders again.
             self._table_data_loaded = True
 
-    def get_context_data(self, request):
+    def get_context_data(self, request, **kwargs):
         """Adds a ``{{ table_name }}_table`` item to the context for each table
         in the :attr:`~horizon.tabs.TableTab.table_classes` attribute.
 
         If only one table class is provided, a shortcut ``table`` context
         variable is also added containing the single table.
         """
-        context = {}
+        context = super(TableTab, self).get_context_data(request, **kwargs)
         # If the data hasn't been manually loaded before now,
         # make certain it's loaded before setting the context.
         self.load_table_data()
@@ -450,6 +463,9 @@ class TableTab(Tab):
                 context["table"] = table
             context["%s_table" % table_name] = table
         return context
+
+    def has_prev_data(self, table):
+        return False
 
     def has_more_data(self, table):
         return False

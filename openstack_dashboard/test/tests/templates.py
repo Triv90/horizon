@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright (c) 2012 OpenStack Foundation
 # All Rights Reserved.
 #
@@ -17,6 +15,7 @@
 
 from django import template
 from django.template import loader
+
 from openstack_dashboard.test import helpers as test
 
 
@@ -69,3 +68,30 @@ class TemplateRenderTest(test.TestCase):
         self.assertFalse('o\"' in out)
         self.assertFalse('o"' in out)
         self.assertTrue('\\"' in out)
+
+    def test_openrc_set_region(self):
+        context = {
+            "user": FakeUser(),
+            "tenant_id": "some-cool-id",
+            "auth_url": "http://tests.com",
+            "tenant_name": "Tenant",
+            "region": "Colorado"}
+        out = loader.render_to_string(
+            'project/access_and_security/api_access/openrc.sh.template',
+            context,
+            template.Context(context))
+
+        self.assertTrue("OS_REGION_NAME=\"Colorado\"" in out)
+
+    def test_openrc_region_not_set(self):
+        context = {
+            "user": FakeUser(),
+            "tenant_id": "some-cool-id",
+            "auth_url": "http://tests.com",
+            "tenant_name": "Tenant"}
+        out = loader.render_to_string(
+            'project/access_and_security/api_access/openrc.sh.template',
+            context,
+            template.Context(context))
+
+        self.assertTrue("OS_REGION_NAME=\"\"" in out)
