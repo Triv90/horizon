@@ -127,6 +127,18 @@ def share_snapshot_delete(request, snapshot_id):
     return manilaclient(request).share_snapshots.delete(snapshot_id)
 
 
+def share_server_list(request, search_opts=None):
+    return manilaclient(request).share_servers.list(search_opts=search_opts)
+
+
+def share_server_get(request, share_serv_id):
+    return manilaclient(request).share_servers.get(share_serv_id)
+
+
+def share_server_delete(request, share_serv_id):
+    return manilaclient(request).share_servers.delete(share_serv_id)
+
+
 def share_network_list(request, detailed=False, search_opts=None):
     return manilaclient(request).share_networks.list(detailed=detailed,
                                                      search_opts=search_opts)

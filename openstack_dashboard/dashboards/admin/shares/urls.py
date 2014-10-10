@@ -38,4 +38,7 @@ urlpatterns = patterns('',
     url(r'^update_type/(?P<volume_type_id>[^/]+)/extra_specs$',
         views.UpdateVolumeTypeView.as_view(),
         name='update_type'),
+    url(r'^share_servers/(?P<share_server_id>[^/]+)$',
+        views.ShareServDetail.as_view(),
+        name='share_server_detail'),
 )
