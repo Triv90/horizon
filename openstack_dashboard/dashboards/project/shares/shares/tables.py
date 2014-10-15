@@ -102,8 +102,11 @@ class UpdateRow(tables.Row):
         share = manila.share_get(request, share_id)
         if not share.name:
             share.name = share_id
-        share_net = manila.share_network_get(request, share.share_network_id)
-        share.share_network = share_net.name or share_net.id
+        if share.share_network_id:
+            share_net = manila.share_network_get(request, share.share_network_id)
+            share.share_network = share_net.name or share_net.id
+        else:
+            share.share_network = None
         return share
 
 
