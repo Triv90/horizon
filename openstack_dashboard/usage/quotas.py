@@ -280,8 +280,7 @@ def tenant_quota_usages(request):
         usages.tally('gigabytes', gig_s + gig_ss)
         usages.tally('shares', len(shares))
         usages.tally('snapshots', len(snapshots))
-        sn_u = sum([1 if v.status == "ACTIVE" else 0 for v in sn_l])
-        usages.tally('share_networks', sn_u)
+        usages.tally('share_networks', len(sn_l))
 
     # Sum our usage based on the flavors of the instances.
     for flavor in [flavors[instance.flavor['id']] for instance in instances]:
