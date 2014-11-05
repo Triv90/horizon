@@ -15,8 +15,6 @@
     <dt>{% trans "Description" %}</dt>
     <dd>{{ share_network.description }}</dd>
     {% endif %}
-    <dt>{% trans "Status" %}</dt>
-    <dd>{{ share_network.status|capfirst }}</dd>
     {% if share_network.share_servers %}
     <dt>{% trans "Share Servers on this network" %}</dt>
     {% for server in share_network.share_servers %}
